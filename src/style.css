@@ -378,3 +378,23 @@ input:focus, select:focus {
   background: var(--cor-primaria-clara);
   color: var(--cor-primaria);
 }
+
+/* Botão pequeno, só com ícone (cabeçalhos de coluna, cards) */
+.btn-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cor-texto-suave);
+  cursor: pointer;
+}
+
+.btn-mini .icone { width: 14px; height: 14px; }
+.btn-mini:hover { background: rgba(20, 30, 50, 0.08); color: var(--cor-texto); }
+.btn-mini:focus-visible { outline: 2px solid var(--cor-primaria); outline-offset: 1px; }
+.btn-mini.perigo:hover { background: #fde8e8; color: var(--cor-perigo); }

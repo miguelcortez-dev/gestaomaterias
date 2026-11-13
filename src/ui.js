@@ -80,5 +80,44 @@
     });
   }
 
-  App.ui = { el, toast, icone, aplicarIcones };
+  /* ---------- Confirmação ---------- */
+
+  /**
+   * Pede confirmação ao usuário com um diálogo próprio do app.
+   * @param {{titulo: string, mensagem: string, confirmar?: string, cancelar?: string, perigo?: boolean}} opcoes
+   * @returns {Promise<boolean>}
+   */
+  function confirmar({ titulo, mensagem, confirmar: textoSim = 'Confirmar', cancelar = 'Cancelar', perigo = false }) {
+    const dialogo = document.getElementById('dlg-confirmar');
+    const form = document.getElementById('form-confirmar');
+    const sim = document.getElementById('confirmar-sim');
+    const nao = document.getElementById('confirmar-nao');
+
+    document.getElementById('confirmar-titulo').textContent = titulo;
+    document.getElementById('confirmar-mensagem').textContent = mensagem;
+    sim.textContent = textoSim;
+    nao.textContent = cancelar;
+    sim.className = 'btn ' + (perigo ? 'btn-perigo' : 'btn-primario');
+
+    return new Promise((resolver) => {
+      const responder = (valor) => {
+        form.onsubmit = nao.onclick = dialogo.oncancel = null;
+        dialogo.close();
+        resolver(valor);
+      };
+      form.onsubmit = (evento) => {
+        evento.preventDefault();
+        responder(true);
+      };
+      nao.onclick = () => responder(false);
+      dialogo.oncancel = (evento) => {
+        evento.preventDefault();
+        responder(false);
+      };
+      dialogo.showModal();
+      (perigo ? nao : sim).focus(); // em ações destrutivas, o foco fica em "Cancelar"
+    });
+  }
+
+  App.ui = { el, toast, icone, aplicarIcones, confirmar };
 })();

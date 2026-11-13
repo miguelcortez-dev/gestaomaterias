@@ -79,6 +79,70 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Períodos: adicionar e remover
+   * ------------------------------------------------------------------ */
+
+  function adicionarPeriodo() {
+    if (App.estado.obter().periodos.length >= Modelo.LIMITE_PERIODOS) {
+      toast(`O limite é de ${Modelo.LIMITE_PERIODOS} períodos.`, 'aviso');
+      return;
+    }
+    App.estado.alterar('Adicionar período', (rascunho) => {
+      rascunho.periodos.push({ id: Modelo.gerarId('p') });
+    });
+    // Mostra a nova coluna, que fica no fim do quadro.
+    $('quadro').scrollTo({ left: $('quadro').scrollWidth, behavior: 'smooth' });
+  }
+
+  async function removerPeriodo(periodoId) {
+    const dados = App.estado.obter();
+    const indice = dados.periodos.findIndex((p) => p.id === periodoId);
+    if (indice < 0) return;
+    const rotulo = Modelo.rotuloPeriodo(indice);
+
+    if (dados.materias.some((m) => m.periodoId === periodoId)) {
+      toast('Só é possível remover um período vazio. Mova ou exclua as matérias dele antes.', 'aviso');
+      return;
+    }
+    if (dados.periodos.length === 1) {
+      toast('O curso precisa ter pelo menos um período.', 'aviso');
+      return;
+    }
+
+    // Remover um período previsto (não extra) diminui o número de períodos do curso.
+    const ehBase = indice < dados.periodosBase;
+    if (ehBase && dados.periodosBase === 1) {
+      toast('O curso precisa prever pelo menos um período.', 'aviso');
+      return;
+    }
+    const confirmado = await App.ui.confirmar({
+      titulo: `Remover o ${rotulo}?`,
+      mensagem: ehBase
+        ? `Este período faz parte dos ${dados.periodosBase} previstos pelo curso. Ao removê-lo, o curso passará a prever ${dados.periodosBase - 1} período(s) e os seguintes serão renumerados.`
+        : 'Este período extra está vazio e será removido. Os períodos seguintes serão renumerados.',
+      confirmar: 'Remover',
+      perigo: true,
+    });
+    if (!confirmado) return;
+
+    App.estado.alterar('Remover período', (rascunho) => {
+      rascunho.periodos.splice(indice, 1);
+      if (ehBase) rascunho.periodosBase -= 1;
+    });
+  }
+
+  /** Cliques no quadro são tratados por delegação, via atributos data-acao. */
+  function ligarQuadro() {
+    $('quadro').addEventListener('click', (evento) => {
+      const alvo = evento.target.closest('[data-acao]');
+      if (!alvo) return;
+      const { acao, periodoId } = alvo.dataset;
+      if (acao === 'adicionar-periodo') adicionarPeriodo();
+      else if (acao === 'remover-periodo') removerPeriodo(periodoId);
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Inicialização
    * ------------------------------------------------------------------ */
 
@@ -102,6 +166,7 @@
       return;
     }
     ligarConfiguracao();
+    ligarQuadro();
     App.estado.aoAlterar(App.render.renderizar);
     App.estado.iniciar(resposta.dados);
     if (resposta.aviso) toast(resposta.aviso, 'aviso', 10000);

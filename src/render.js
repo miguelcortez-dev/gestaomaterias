@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   const App = window.App;
-  const { el } = App.ui;
+  const { el, icone } = App.ui;
 
   const quadro = document.getElementById('quadro');
 
@@ -25,6 +25,12 @@
     }
 
     const colunas = dados.periodos.map((periodo, indice) => renderizarColuna(dados, periodo, indice));
+    colunas.push(
+      el('button', { type: 'button', class: 'coluna-nova', dataset: { acao: 'adicionar-periodo' }, title: 'Adicionar um período extra' }, [
+        icone('mais'),
+        'Período',
+      ]),
+    );
 
     const conteudo = el('div', { class: 'quadro-conteudo', id: 'quadro-conteudo' }, [
       el('div', { class: 'colunas', id: 'colunas' }, colunas),
@@ -44,6 +50,16 @@
       el('h2', { class: 'coluna-titulo' }, rotulo),
       extra ? el('span', { class: 'selo-extra', title: 'Período além do previsto pelo curso' }, 'Extra') : null,
       el('span', { class: 'coluna-info' }, materias.length === 1 ? '1 matéria' : `${materias.length} matérias`),
+      // Só é possível remover períodos vazios.
+      materias.length === 0 && dados.periodos.length > 1
+        ? el('button', {
+          type: 'button',
+          class: 'btn-mini',
+          title: `Remover o ${rotulo}`,
+          'aria-label': `Remover o ${rotulo}`,
+          dataset: { acao: 'remover-periodo', periodoId: periodo.id },
+        }, icone('fechar'))
+        : null,
     ]);
 
     const corpo = el('div', { class: 'coluna-corpo', dataset: { periodoId: periodo.id } },

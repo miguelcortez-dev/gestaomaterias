@@ -39,6 +39,18 @@
       </form>
     </dialog>
 
+    <!-- Confirmação genérica (ver App.ui.confirmar) -->
+    <dialog id="dlg-confirmar" class="dialogo dialogo-pequeno" aria-labelledby="confirmar-titulo">
+      <form id="form-confirmar" class="dialogo-corpo" novalidate>
+        <h2 id="confirmar-titulo"></h2>
+        <p id="confirmar-mensagem"></p>
+        <footer class="dialogo-rodape">
+          <button type="button" class="btn" id="confirmar-nao">Cancelar</button>
+          <button type="submit" class="btn btn-primario" id="confirmar-sim">Confirmar</button>
+        </footer>
+      </form>
+    </dialog>
+
     <div id="toasts" class="toasts" aria-live="polite"></div>
 
     <!-- Ordem importa: modelo → utilitários → IPC → estado → renderização → app -->
