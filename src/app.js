@@ -257,6 +257,102 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Matérias: arrastar e soltar entre períodos
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Move a matéria para um período, posicionando-a antes de outra matéria
+   * (ou no fim da coluna, se `antesDeId` for null).
+   */
+  function moverMateria(id, periodoId, antesDeId) {
+    App.estado.alterar('Mover matéria', (rascunho) => {
+      const lista = rascunho.materias;
+      const origem = lista.findIndex((m) => m.id === id);
+      if (origem < 0) return false;
+      const [materia] = lista.splice(origem, 1);
+      materia.periodoId = periodoId;
+
+      let destino = antesDeId ? lista.findIndex((m) => m.id === antesDeId) : -1;
+      if (destino < 0) {
+        // Fim da coluna: logo após a última matéria do período (ou no fim da lista).
+        const ultima = lista.map((m) => m.periodoId).lastIndexOf(periodoId);
+        destino = ultima < 0 ? lista.length : ultima + 1;
+      }
+      lista.splice(destino, 0, materia);
+    });
+  }
+
+  /** Id da matéria sendo arrastada (null quando não há arraste). */
+  let arrastando = null;
+  /** Linha que indica onde o card será solto. */
+  const marcadorSoltar = el('div', { class: 'marcador-soltar', 'aria-hidden': 'true' });
+
+  /** Primeiro card da coluna abaixo do ponteiro (ou null = fim da coluna). */
+  function cardAbaixoDoPonteiro(corpo, y) {
+    const cards = [...corpo.querySelectorAll('.card:not(.arrastando)')];
+    return cards.find((card) => {
+      const r = card.getBoundingClientRect();
+      return y < r.top + r.height / 2;
+    }) || null;
+  }
+
+  function finalizarArraste() {
+    arrastando = null;
+    marcadorSoltar.remove();
+    document.querySelectorAll('.card.arrastando').forEach((c) => c.classList.remove('arrastando'));
+    document.querySelectorAll('.coluna.alvo-soltar').forEach((c) => c.classList.remove('alvo-soltar'));
+  }
+
+  function ligarArrastarCards() {
+    const quadro = $('quadro');
+
+    quadro.addEventListener('dragstart', (evento) => {
+      const card = evento.target instanceof Element && evento.target.closest('.card');
+      if (!card) return;
+      arrastando = card.dataset.id;
+      evento.dataTransfer.effectAllowed = 'move';
+      evento.dataTransfer.setData('text/plain', arrastando);
+      requestAnimationFrame(() => card.classList.add('arrastando'));
+    });
+
+    quadro.addEventListener('dragover', (evento) => {
+      if (!arrastando) return;
+      const coluna = evento.target instanceof Element && evento.target.closest('.coluna');
+      if (!coluna) return;
+      evento.preventDefault(); // permite soltar aqui
+      evento.dataTransfer.dropEffect = 'move';
+
+      document.querySelectorAll('.coluna.alvo-soltar').forEach((c) => c !== coluna && c.classList.remove('alvo-soltar'));
+      coluna.classList.add('alvo-soltar');
+      const corpo = coluna.querySelector('.coluna-corpo');
+      const abaixo = cardAbaixoDoPonteiro(corpo, evento.clientY);
+      if (abaixo) {
+        if (marcadorSoltar.nextElementSibling !== abaixo) corpo.insertBefore(marcadorSoltar, abaixo);
+      } else if (corpo.lastElementChild !== marcadorSoltar) {
+        corpo.append(marcadorSoltar);
+      }
+    });
+
+    quadro.addEventListener('drop', (evento) => {
+      if (!arrastando) return;
+      const coluna = evento.target instanceof Element && evento.target.closest('.coluna');
+      if (!coluna) return;
+      evento.preventDefault();
+
+      // O próximo card após o marcador (ignorando o próprio card arrastado).
+      let proximo = marcadorSoltar.nextElementSibling;
+      while (proximo && proximo.classList.contains('arrastando')) proximo = proximo.nextElementSibling;
+      const antesDeId = proximo && proximo.classList.contains('card') ? proximo.dataset.id : null;
+
+      const id = arrastando;
+      finalizarArraste();
+      moverMateria(id, coluna.dataset.periodoId, antesDeId);
+    });
+
+    quadro.addEventListener('dragend', finalizarArraste);
+  }
+
+  /* ------------------------------------------------------------------ *
    * Quadro: cliques e atalhos de teclado
    * ------------------------------------------------------------------ */
 
@@ -331,6 +427,7 @@
     ligarConfiguracao();
     ligarQuadro();
     ligarFormularioMateria();
+    ligarArrastarCards();
     ligarAtalhos();
     App.estado.aoAlterar(App.render.renderizar);
     App.estado.iniciar(resposta.dados);

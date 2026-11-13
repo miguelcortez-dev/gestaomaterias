@@ -497,3 +497,20 @@ input:focus, select:focus {
 
 .btn-texto-perigo { color: var(--cor-perigo); }
 .btn-texto-perigo:hover { background: #fdecec; color: var(--cor-perigo); }
+
+/* ---------- Arrastar e soltar ---------- */
+.card[draggable="true"] { cursor: grab; }
+.card.arrastando { opacity: 0.35; }
+
+.coluna.alvo-soltar {
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 2px var(--cor-primaria-clara);
+}
+
+.marcador-soltar {
+  flex-shrink: 0;
+  height: 4px;
+  margin: -3px 0;
+  border-radius: 2px;
+  background: var(--cor-primaria);
+}

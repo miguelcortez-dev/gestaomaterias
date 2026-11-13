@@ -103,7 +103,8 @@
       class: 'card',
       tabindex: '0',
       'aria-label': materia.nome,
-      title: 'Clique duas vezes para editar',
+      title: 'Arraste para outro período ou clique duas vezes para editar',
+      draggable: 'true',
       dataset: { id: materia.id },
     }, [
       acoes,
