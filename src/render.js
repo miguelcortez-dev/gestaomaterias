@@ -224,7 +224,7 @@
     if (svg) svg.replaceChildren();
   }
 
-  App.render = { renderizar, desenharSetas, aplicarDestaque, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
+  App.render = { renderizar, desenharSetas, aplicarDestaque, descreverReprovacao, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
 
   /** Uma coluna = um período. Períodos além do previsto são marcados como "Extra". */
   function renderizarColuna(dados, periodo, indice) {
@@ -270,9 +270,21 @@
   /** Classe CSS do status (ex.: "Aprovada" → "status-aprovada"). */
   const classeStatus = (status) => 'status-' + status.toLowerCase();
 
-  /** Card de uma matéria: código, nome, carga horária e status. */
+  /** Texto de uma reprovação do histórico (ex.: "Reprovada no 3º período em 12/11/2026"). */
+  function descreverReprovacao(registro) {
+    const data = registro.data.split('-').reverse().join('/');
+    return `Reprovada no ${registro.periodo}º período em ${data}`;
+  }
+
+  /** Card de uma matéria: código, nome, carga horária, status e tentativa. */
   function renderizarCard(materia) {
     const detalhes = [el('span', { class: `selo-status ${classeStatus(materia.status)}` }, materia.status)];
+    if (materia.tentativas > 1) {
+      detalhes.push(el('span', {
+        class: 'selo-tentativa',
+        title: materia.historico.map(descreverReprovacao).join('\n'),
+      }, `${materia.tentativas}ª tentativa`));
+    }
     if (materia.cargaHoraria !== null) detalhes.push(el('span', { class: 'card-ch' }, `${materia.cargaHoraria} h`));
 
     const acoes = el('div', { class: 'card-acoes' }, [

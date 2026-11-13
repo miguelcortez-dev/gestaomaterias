@@ -14,8 +14,10 @@
  *     cargaHoraria: number|null,
  *     periodoId,               // período em que será cursada
  *     preRequisitos: [id],     // matérias que precisam ser cursadas antes
- *     status                   // um de STATUS
- *   }]                     // a ordem do array define a ordem dos cards em cada coluna
+ *     status,                  // um de STATUS
+ *     tentativas: number,      // 1 na primeira vez; +1 a cada recolocação após reprovação
+ *     historico: [{ periodo, data }]  // reprovações anteriores (nº do período, AAAA-MM-DD)
+ *   }]                   // a ordem do array define a ordem dos cards em cada coluna
  * }
  */
 (function (raiz, fabrica) {
@@ -61,6 +63,8 @@
       periodoId: null,
       preRequisitos: [],
       status: STATUS_PADRAO,
+      tentativas: 1,
+      historico: [],
       ...campos,
     };
   }
@@ -81,6 +85,10 @@
         ? []
         : Array.isArray(m.preRequisitos) ? [...new Set(m.preRequisitos)] : m.preRequisitos,
       status: m.status === undefined ? STATUS_PADRAO : m.status,
+      tentativas: m.tentativas === undefined ? 1 : m.tentativas,
+      historico: m.historico === undefined
+        ? []
+        : Array.isArray(m.historico) ? m.historico.map((h) => (ehObjeto(h) ? { periodo: h.periodo, data: h.data } : h)) : m.historico,
     };
   }
 
@@ -157,6 +165,11 @@
       }
       if (!idsPeriodos.has(m.periodoId)) erro(`${ref}: período inexistente.`);
       if (!STATUS.includes(m.status)) erro(`${ref}: status inválido.`);
+      if (!ehInteiro(m.tentativas, 1, 99)) erro(`${ref}: número de tentativas inválido.`);
+      const historicoValido = Array.isArray(m.historico) && m.historico.every((h) =>
+        ehObjeto(h) && ehInteiro(h.periodo, 1, LIMITE_PERIODOS) &&
+        typeof h.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(h.data));
+      if (!historicoValido) erro(`${ref}: histórico de tentativas inválido.`);
     });
 
     // Pré-requisitos: devem apontar para matérias existentes e não formar ciclos.

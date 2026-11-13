@@ -59,6 +59,7 @@
           <input type="search" id="prereq-busca" placeholder="Filtrar matérias…" autocomplete="off" aria-label="Filtrar pré-requisitos">
           <div id="prereq-lista" class="lista-opcoes" role="group" aria-label="Pré-requisitos"></div>
         </fieldset>
+        <div id="materia-historico" class="historico" hidden></div>
         <p id="materia-erro" class="erro-form" hidden></p>
         <footer class="dialogo-rodape">
           <button type="button" class="btn btn-fantasma btn-texto-perigo" id="materia-excluir" data-icone="excluir" hidden>Excluir</button>
@@ -83,6 +84,23 @@
         <footer class="dialogo-rodape">
           <button type="button" class="btn" id="config-cancelar">Cancelar</button>
           <button type="submit" class="btn btn-primario">Salvar</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <!-- Reprovação: oferece recolocar a matéria em um período posterior -->
+    <dialog id="dlg-reprovacao" class="dialogo dialogo-pequeno" aria-labelledby="reprovacao-titulo">
+      <form id="form-reprovacao" class="dialogo-corpo" novalidate>
+        <h2 id="reprovacao-titulo">Matéria reprovada</h2>
+        <p id="reprovacao-mensagem"></p>
+        <label class="campo">
+          <span class="campo-rotulo">Cursar novamente no</span>
+          <select id="reprovacao-periodo"></select>
+        </label>
+        <p class="ajuda">A tentativa atual fica registrada no histórico da matéria e o card passa a mostrar o número da nova tentativa.</p>
+        <footer class="dialogo-rodape">
+          <button type="button" class="btn" id="reprovacao-manter">Manter no período atual</button>
+          <button type="submit" class="btn btn-primario">Recolocar</button>
         </footer>
       </form>
     </dialog>
