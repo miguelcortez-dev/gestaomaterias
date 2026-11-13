@@ -135,3 +135,136 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
+
+/* ---------- Ícones ---------- */
+.icone {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- Botões ---------- */
+.acoes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.btn:hover { background: #f3f5fa; border-color: #c8d0dd; }
+.btn:focus-visible { outline: 2px solid var(--cor-primaria); outline-offset: 2px; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+.btn-primario { background: var(--cor-primaria); border-color: var(--cor-primaria); color: #fff; }
+.btn-primario:hover { background: var(--cor-primaria-escura); border-color: var(--cor-primaria-escura); }
+
+.btn-perigo { background: var(--cor-perigo); border-color: var(--cor-perigo); color: #fff; }
+.btn-perigo:hover { background: #a51f1f; border-color: #a51f1f; }
+
+.btn-fantasma { background: transparent; border-color: transparent; color: var(--cor-texto-suave); }
+.btn-fantasma:hover { background: #eef1f6; border-color: transparent; color: var(--cor-texto); }
+
+.btn-icone { width: 34px; padding: 0; }
+
+/* ---------- Diálogos ---------- */
+dialog.dialogo {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  box-shadow: var(--sombra-2);
+}
+
+dialog.dialogo-pequeno { width: min(440px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+
+.dialogo-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px 18px;
+}
+
+.dialogo-corpo h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.dialogo-corpo p { margin: 0; }
+
+.dialogo-rodape {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* ---------- Formulários ---------- */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.campo-rotulo {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+input, select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #cbd2de;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--cor-texto);
+  font: inherit;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px var(--cor-primaria-clara);
+}
+
+.ajuda {
+  color: var(--cor-texto-suave);
+  font-size: 13px;
+}
+
+.erro-form {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fdecec;
+  color: var(--cor-perigo);
+  font-size: 13px;
+}
+
+[hidden] { display: none !important; }

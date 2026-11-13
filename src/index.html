@@ -14,9 +14,30 @@
         <span class="marca-logo" aria-hidden="true"></span>
         <h1>Gestão de Matérias</h1>
       </div>
+      <div class="acoes">
+        <button type="button" id="btn-config" class="btn btn-fantasma" data-icone="ajustes" title="Configurações do curso">Configurações</button>
+      </div>
     </header>
 
     <main id="quadro" class="quadro"></main>
+
+    <!-- Configuração do número de períodos (primeira execução e "Configurações") -->
+    <dialog id="dlg-config" class="dialogo" aria-labelledby="config-titulo">
+      <form id="form-config" class="dialogo-corpo" novalidate>
+        <h2 id="config-titulo">Configuração do curso</h2>
+        <p id="config-intro" class="ajuda"></p>
+        <label class="campo">
+          <span class="campo-rotulo">Quantos períodos (semestres de 6 meses) o curso tem?</span>
+          <input type="number" id="config-periodos" min="1" max="20" step="1" required>
+        </label>
+        <p class="ajuda">Se precisar de mais tempo para concluir o curso, você poderá adicionar períodos extras com o botão “+ Período”.</p>
+        <p id="config-erro" class="erro-form" hidden></p>
+        <footer class="dialogo-rodape">
+          <button type="button" class="btn" id="config-cancelar">Cancelar</button>
+          <button type="submit" class="btn btn-primario">Salvar</button>
+        </footer>
+      </form>
+    </dialog>
 
     <div id="toasts" class="toasts" aria-live="polite"></div>
 
