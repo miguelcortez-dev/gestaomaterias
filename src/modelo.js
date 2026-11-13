@@ -8,7 +8,12 @@
  *   configurado: boolean,      // false até o usuário informar os períodos
  *   periodosBase: number,      // períodos previstos pelo curso
  *   periodos: [{ id }],        // ordem = ordem das colunas; índice >= periodosBase é "extra"
- *   materias: []
+ *   materias: [{
+ *     id, nome,
+ *     codigo: string,          // opcional ('' quando vazio)
+ *     cargaHoraria: number|null,
+ *     periodoId                // período em que será cursada
+ *   }]                         // a ordem do array define a ordem dos cards em cada coluna
  * }
  */
 (function (raiz, fabrica) {
@@ -21,6 +26,9 @@
   const LIMITE_PERIODOS_BASE = 20;
   const LIMITE_PERIODOS = 40;
   const PERIODOS_PADRAO = 8;
+  const LIMITE_NOME = 120;
+  const LIMITE_CODIGO = 20;
+  const LIMITE_CARGA_HORARIA = 2000;
 
   /** Gera um identificador único curto (ex.: "p-lk2j3h-8f2a1c"). */
   function gerarId(prefixo) {
@@ -39,8 +47,32 @@
     };
   }
 
+  /** Cria uma matéria nova com os valores padrão para os campos não informados. */
+  function criarMateria(campos) {
+    return {
+      id: gerarId('m'),
+      nome: '',
+      codigo: '',
+      cargaHoraria: null,
+      periodoId: null,
+      ...campos,
+    };
+  }
+
   const ehObjeto = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
   const ehInteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+
+  /** Completa os campos de uma matéria (formato de versões anteriores). */
+  function normalizarMateria(m) {
+    if (!ehObjeto(m)) return m;
+    return {
+      id: m.id,
+      nome: typeof m.nome === 'string' ? m.nome.trim() : m.nome,
+      codigo: m.codigo === undefined || m.codigo === null ? '' : typeof m.codigo === 'string' ? m.codigo.trim() : m.codigo,
+      cargaHoraria: m.cargaHoraria === undefined || m.cargaHoraria === '' ? null : m.cargaHoraria,
+      periodoId: m.periodoId,
+    };
+  }
 
   /**
    * Completa campos ausentes com valores padrão e descarta campos desconhecidos,
@@ -57,7 +89,7 @@
       periodos: Array.isArray(bruto.periodos)
         ? bruto.periodos.map((p) => (ehObjeto(p) ? { id: p.id } : p))
         : padrao.periodos,
-      materias: Array.isArray(bruto.materias) ? bruto.materias : padrao.materias,
+      materias: Array.isArray(bruto.materias) ? bruto.materias.map(normalizarMateria) : padrao.materias,
     };
   }
 
@@ -77,21 +109,44 @@
     }
 
     // Períodos
+    const idsPeriodos = new Set();
     if (!Array.isArray(dados.periodos)) {
       erro('Lista de períodos ausente.');
     } else {
       if (dados.periodos.length > LIMITE_PERIODOS) erro(`Máximo de ${LIMITE_PERIODOS} períodos.`);
       if (dados.configurado && dados.periodos.length === 0) erro('O curso precisa de ao menos um período.');
-      const ids = new Set();
       dados.periodos.forEach((p, i) => {
         if (!ehObjeto(p) || typeof p.id !== 'string' || !p.id) erro(`Período ${i + 1} sem identificador.`);
-        else if (ids.has(p.id)) erro(`Identificador de período repetido: ${p.id}.`);
-        else ids.add(p.id);
+        else if (idsPeriodos.has(p.id)) erro(`Identificador de período repetido: ${p.id}.`);
+        else idsPeriodos.add(p.id);
       });
     }
 
     // Matérias
-    if (!Array.isArray(dados.materias)) erro('Lista de matérias ausente.');
+    if (!Array.isArray(dados.materias)) {
+      erro('Lista de matérias ausente.');
+      return { ok: false, erros };
+    }
+    const idsMaterias = new Set();
+    dados.materias.forEach((m, i) => {
+      if (!ehObjeto(m)) {
+        erro(`Matéria ${i + 1}: formato inválido.`);
+        return;
+      }
+      const ref = typeof m.nome === 'string' && m.nome ? `Matéria "${m.nome}"` : `Matéria ${i + 1}`;
+      if (typeof m.id !== 'string' || !m.id) erro(`${ref}: sem identificador.`);
+      else if (idsMaterias.has(m.id)) erro(`${ref}: identificador repetido.`);
+      else idsMaterias.add(m.id);
+      if (typeof m.nome !== 'string' || !m.nome.trim()) erro(`${ref}: o nome é obrigatório.`);
+      else if (m.nome.length > LIMITE_NOME) erro(`${ref}: nome com mais de ${LIMITE_NOME} caracteres.`);
+      if (typeof m.codigo !== 'string' || m.codigo.length > LIMITE_CODIGO) {
+        erro(`${ref}: o código deve ter até ${LIMITE_CODIGO} caracteres.`);
+      }
+      if (m.cargaHoraria !== null && !ehInteiro(m.cargaHoraria, 0, LIMITE_CARGA_HORARIA)) {
+        erro(`${ref}: a carga horária deve ser um número inteiro entre 0 e ${LIMITE_CARGA_HORARIA}.`);
+      }
+      if (!idsPeriodos.has(m.periodoId)) erro(`${ref}: período inexistente.`);
+    });
 
     return { ok: erros.length === 0, erros };
   }
@@ -106,8 +161,12 @@
     LIMITE_PERIODOS_BASE,
     LIMITE_PERIODOS,
     PERIODOS_PADRAO,
+    LIMITE_NOME,
+    LIMITE_CODIGO,
+    LIMITE_CARGA_HORARIA,
     gerarId,
     criarDadosPadrao,
+    criarMateria,
     normalizarDados,
     validarDados,
     rotuloPeriodo,

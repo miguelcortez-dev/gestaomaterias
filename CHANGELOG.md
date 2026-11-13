@@ -7,6 +7,19 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.3.0] - 2026-11-12
+
+### Adicionado
+
+- Botão "+" flutuante (e atalho Ctrl+N) para cadastrar matérias em um
+  formulário com nome (obrigatório), código, carga horária e período.
+- Botão "+" no cabeçalho de cada coluna para criar a matéria já naquele período.
+- Cards de matéria com código, nome e carga horária.
+- Edição (botão, duplo clique ou Enter) e exclusão (botão, Delete ou pelo
+  formulário) de matérias, sempre com confirmação antes de excluir.
+- Arrastar e soltar cards entre períodos e reordená-los dentro da coluna;
+  também é possível mudar o período pelo formulário.
+
 ## [0.2.0] - 2026-11-12
 
 ### Adicionado

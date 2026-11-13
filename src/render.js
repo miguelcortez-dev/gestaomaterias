@@ -14,6 +14,8 @@
   function renderizar(dados) {
     const { scrollLeft, scrollTop } = quadro;
 
+    document.getElementById('btn-nova-materia').hidden = !dados.configurado;
+
     if (!dados.configurado) {
       quadro.replaceChildren(
         el('div', { class: 'vazio' }, [
@@ -50,6 +52,13 @@
       el('h2', { class: 'coluna-titulo' }, rotulo),
       extra ? el('span', { class: 'selo-extra', title: 'Período além do previsto pelo curso' }, 'Extra') : null,
       el('span', { class: 'coluna-info' }, materias.length === 1 ? '1 matéria' : `${materias.length} matérias`),
+      el('button', {
+        type: 'button',
+        class: 'btn-mini',
+        title: `Nova matéria no ${rotulo}`,
+        'aria-label': `Nova matéria no ${rotulo}`,
+        dataset: { acao: 'nova-materia', periodoId: periodo.id },
+      }, icone('mais')),
       // Só é possível remover períodos vazios.
       materias.length === 0 && dados.periodos.length > 1
         ? el('button', {
@@ -63,13 +72,46 @@
     ]);
 
     const corpo = el('div', { class: 'coluna-corpo', dataset: { periodoId: periodo.id } },
-      materias.length ? [] : el('p', { class: 'coluna-dica' }, 'Nenhuma matéria neste período.'));
+      materias.length
+        ? materias.map((m) => renderizarCard(m))
+        : el('p', { class: 'coluna-dica' }, 'Nenhuma matéria neste período.'));
 
     return el('section', {
       class: 'coluna' + (extra ? ' coluna-extra' : ''),
       dataset: { periodoId: periodo.id },
       'aria-label': rotulo + (extra ? ' (extra)' : ''),
     }, [cabecalho, corpo]);
+  }
+
+  /** Card de uma matéria: código, nome e carga horária. */
+  function renderizarCard(materia) {
+    const detalhes = [];
+    if (materia.cargaHoraria !== null) detalhes.push(el('span', { class: 'card-ch' }, `${materia.cargaHoraria} h`));
+
+    const acoes = el('div', { class: 'card-acoes' }, [
+      el('button', {
+        type: 'button', class: 'btn-mini', title: 'Editar', 'aria-label': `Editar ${materia.nome}`,
+        dataset: { acao: 'editar-materia', id: materia.id },
+      }, icone('editar')),
+      el('button', {
+        type: 'button', class: 'btn-mini perigo', title: 'Excluir', 'aria-label': `Excluir ${materia.nome}`,
+        dataset: { acao: 'excluir-materia', id: materia.id },
+      }, icone('excluir')),
+    ]);
+
+    return el('article', {
+      class: 'card',
+      tabindex: '0',
+      'aria-label': materia.nome,
+      title: 'Arraste para outro período ou clique duas vezes para editar',
+      draggable: 'true',
+      dataset: { id: materia.id },
+    }, [
+      acoes,
+      materia.codigo ? el('div', { class: 'card-codigo' }, materia.codigo) : null,
+      el('div', { class: 'card-nome' }, materia.nome),
+      detalhes.length ? el('div', { class: 'card-rodape' }, detalhes) : null,
+    ]);
   }
 
   App.render = { renderizar };
