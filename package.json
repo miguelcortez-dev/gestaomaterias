@@ -1,0 +1,16 @@
+{
+  "name": "gestao-materias",
+  "productName": "Gestão de Matérias",
+  "version": "0.1.0",
+  "description": "Controle das matérias da faculdade em forma de fluxograma, para uso offline no computador.",
+  "main": "main.js",
+  "private": true,
+  "author": "miguelcortez-dev",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "45.3.1"
+  }
+}

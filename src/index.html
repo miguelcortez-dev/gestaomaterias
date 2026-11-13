@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <!-- Política de segurança: apenas recursos locais do próprio app; sem scripts inline, rede ou frames. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestão de Matérias</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header class="barra-topo">
+      <div class="marca">
+        <span class="marca-logo" aria-hidden="true"></span>
+        <h1>Gestão de Matérias</h1>
+      </div>
+    </header>
+
+    <main id="quadro" class="quadro"></main>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <!-- Ordem importa: modelo → utilitários → IPC → estado → app -->
+    <script src="modelo.js"></script>
+    <script src="ui.js"></script>
+    <script src="ipc.js"></script>
+    <script src="estado.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
