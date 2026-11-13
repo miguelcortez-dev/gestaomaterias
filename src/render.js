@@ -63,7 +63,12 @@
   /** Pontas de seta: uma por estilo, pois a ponta não herda a cor da linha. */
   function criarDefinicoes() {
     const defs = svgEl('defs');
-    for (const [id, classe] of [['ponta', 'ponta'], ['ponta-destaque', 'ponta destaque'], ['ponta-alerta', 'ponta alerta']]) {
+    for (const [id, classe] of [
+      ['ponta', 'ponta'],
+      ['ponta-exige', 'ponta exige'],
+      ['ponta-libera', 'ponta libera'],
+      ['ponta-alerta', 'ponta alerta'],
+    ]) {
       const marcador = svgEl('marker', {
         id, viewBox: '0 0 10 10', refX: '9', refY: '5',
         markerWidth: '9', markerHeight: '9', markerUnits: 'userSpaceOnUse', orient: 'auto',
@@ -155,6 +160,47 @@
     svg.replaceChildren(criarDefinicoes(), ...grupos);
   }
 
+  /* ------------------------------------------------------------------ *
+   * Destaque de dependências
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Destaca a matéria `id`, tudo o que ela exige e tudo o que ela libera
+   * (direta ou indiretamente); o restante fica esmaecido. `id` nulo limpa.
+   * @param {string|null} id          matéria em foco (mouse por cima ou selecionada)
+   * @param {string|null} selecionada matéria selecionada por clique
+   */
+  function aplicarDestaque(id, selecionada) {
+    const dados = App.estado.obter();
+    const legenda = document.getElementById('legenda-destaque');
+    const materia = id ? dados.materias.find((m) => m.id === id) : null;
+    const exige = materia ? Modelo.requisitosDe(dados.materias, id) : new Set();
+    const libera = materia ? Modelo.liberadasPor(dados.materias, id) : new Set();
+
+    quadro.classList.toggle('com-destaque', !!materia);
+    quadro.querySelectorAll('.card').forEach((card) => {
+      const cid = card.dataset.id;
+      card.classList.toggle('selecionada', cid === selecionada);
+      card.classList.toggle('foco', !!materia && cid === id);
+      card.classList.toggle('exige', exige.has(cid));
+      card.classList.toggle('libera', libera.has(cid));
+    });
+    quadro.querySelectorAll('#setas .seta').forEach((seta) => {
+      const { de, para } = seta.dataset;
+      seta.classList.toggle('destaque-exige', exige.has(de) && (para === id || exige.has(para)));
+      seta.classList.toggle('destaque-libera', (de === id || libera.has(de)) && libera.has(para));
+    });
+
+    legenda.hidden = !materia;
+    if (materia) {
+      legenda.replaceChildren(
+        el('strong', {}, materia.nome),
+        el('span', { class: 'legenda-item exige' }, `Exige ${exige.size}`),
+        el('span', { class: 'legenda-item libera' }, `Libera ${libera.size}`),
+      );
+    }
+  }
+
   /** Coordenadas de um ponto da tela relativas ao conteúdo do quadro. */
   function pontoNoConteudo(clientX, clientY) {
     const base = document.getElementById('quadro-conteudo').getBoundingClientRect();
@@ -178,7 +224,7 @@
     if (svg) svg.replaceChildren();
   }
 
-  App.render = { renderizar, desenharSetas, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
+  App.render = { renderizar, desenharSetas, aplicarDestaque, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
 
   /** Uma coluna = um período. Períodos além do previsto são marcados como "Extra". */
   function renderizarColuna(dados, periodo, indice) {

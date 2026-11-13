@@ -661,3 +661,69 @@ dialog.dialogo { overflow: auto; }
   border-color: var(--cor-primaria);
   box-shadow: 0 0 0 3px var(--cor-primaria-clara), var(--sombra-1);
 }
+
+/* ---------- Destaque de dependências ---------- */
+:root {
+  --cor-exige: #7c3aed;    /* o que a matéria exige (pré-requisitos) */
+  --cor-libera: #0f8a7e;   /* o que a matéria libera (dependentes) */
+}
+
+.card.selecionada { outline: 2px solid var(--cor-primaria); outline-offset: 2px; }
+
+.com-destaque .card { opacity: 0.28; }
+.com-destaque .card.foco,
+.com-destaque .card.exige,
+.com-destaque .card.libera { opacity: 1; }
+
+.card.foco { box-shadow: 0 0 0 3px #b8c4f5, 0 6px 16px rgba(20, 30, 50, 0.16); }
+.card.exige { box-shadow: 0 0 0 2px var(--cor-exige), var(--sombra-1); }
+.card.libera { box-shadow: 0 0 0 2px var(--cor-libera), var(--sombra-1); }
+
+.com-destaque .seta .seta-linha { opacity: 0.12; }
+.com-destaque .seta.destaque-exige .seta-linha,
+.com-destaque .seta.destaque-libera .seta-linha { opacity: 1; stroke-width: 2.4; }
+.seta.destaque-exige .seta-linha { stroke: var(--cor-exige); marker-end: url(#ponta-exige); }
+.seta.destaque-libera .seta-linha { stroke: var(--cor-libera); marker-end: url(#ponta-libera); }
+.ponta.exige { fill: var(--cor-exige); }
+.ponta.libera { fill: var(--cor-libera); }
+
+.legenda {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 140px);
+  padding: 8px 14px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 10px;
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-2);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.legenda strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.legenda-item::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legenda-item.exige::before { background: var(--cor-exige); }
+.legenda-item.libera::before { background: var(--cor-libera); }

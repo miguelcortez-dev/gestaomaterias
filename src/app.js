@@ -409,6 +409,8 @@
         return;
       }
       arrastando = card.dataset.id;
+      sobMouse = null;
+      atualizarDestaque();
       evento.dataTransfer.effectAllowed = 'move';
       evento.dataTransfer.setData('text/plain', arrastando);
       requestAnimationFrame(() => card.classList.add('arrastando'));
@@ -558,6 +560,54 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Seleção e destaque de dependências
+   * ------------------------------------------------------------------ */
+
+  /** Matéria selecionada por clique (fica destacada até outro clique). */
+  let selecionada = null;
+  /** Matéria sob o mouse (o destaque temporário tem prioridade). */
+  let sobMouse = null;
+
+  const atualizarDestaque = () => App.render.aplicarDestaque(sobMouse || selecionada, selecionada);
+
+  function selecionar(id) {
+    selecionada = id;
+    atualizarDestaque();
+  }
+
+  function ligarDestaque() {
+    const quadro = $('quadro');
+
+    quadro.addEventListener('pointerover', (evento) => {
+      if (conexao || arrastando) return;
+      const card = evento.target.closest('.card');
+      const id = card ? card.dataset.id : null;
+      if (id !== sobMouse) {
+        sobMouse = id;
+        atualizarDestaque();
+      }
+    });
+    quadro.addEventListener('pointerleave', () => {
+      sobMouse = null;
+      atualizarDestaque();
+    });
+
+    // Clique no card seleciona (ou desmarca); clique no fundo limpa a seleção.
+    quadro.addEventListener('click', (evento) => {
+      if (evento.target.closest('button, .conector, .seta')) return;
+      const card = evento.target.closest('.card');
+      selecionar(card && card.dataset.id !== selecionada ? card.dataset.id : null);
+    });
+
+    // Após qualquer alteração, reaplica o destaque nos elementos redesenhados.
+    App.estado.aoAlterar((dados) => {
+      if (selecionada && !dados.materias.some((m) => m.id === selecionada)) selecionada = null;
+      if (sobMouse && !dados.materias.some((m) => m.id === sobMouse)) sobMouse = null;
+      atualizarDestaque();
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Quadro: cliques e atalhos de teclado
    * ------------------------------------------------------------------ */
 
@@ -599,6 +649,10 @@
   function ligarAtalhos() {
     document.addEventListener('keydown', (evento) => {
       if (dialogoAberto()) return;
+      if (evento.key === 'Escape' && selecionada) {
+        selecionar(null);
+        return;
+      }
       const ctrl = evento.ctrlKey || evento.metaKey;
       if (ctrl && !evento.shiftKey && evento.key.toLowerCase() === 'n') {
         evento.preventDefault();
@@ -630,11 +684,15 @@
       mostrarErroFatal(erro.message);
       return;
     }
+    // A renderização é registrada primeiro: os demais ouvintes de mudança
+    // (ex.: destaque) trabalham sobre os elementos já redesenhados.
+    App.estado.aoAlterar(App.render.renderizar);
     ligarConfiguracao();
     ligarQuadro();
     ligarFormularioMateria();
     ligarArrastarCards();
     ligarConexoes();
+    ligarDestaque();
     ligarAtalhos();
 
     // As setas dependem da posição dos cards: redesenha quando o layout muda
@@ -642,11 +700,13 @@
     let quadroPendente = 0;
     const agendarSetas = () => {
       cancelAnimationFrame(quadroPendente);
-      quadroPendente = requestAnimationFrame(App.render.desenharSetas);
+      quadroPendente = requestAnimationFrame(() => {
+        App.render.desenharSetas();
+        atualizarDestaque();
+      });
     };
     window.addEventListener('resize', agendarSetas);
     new ResizeObserver(agendarSetas).observe($('quadro'));
-    App.estado.aoAlterar(App.render.renderizar);
     App.estado.iniciar(resposta.dados);
     if (resposta.aviso) toast(resposta.aviso, 'aviso', 10000);
     if (!resposta.dados.configurado) abrirConfiguracao();
