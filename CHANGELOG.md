@@ -7,6 +7,25 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.4.0] - 2026-11-12
+
+### Adicionado
+
+- Campo "Pré-requisitos" no formulário da matéria: lista de seleção múltipla
+  agrupada por período, com filtro por nome ou código.
+- Setas em SVG (curvas suaves) ligando cada pré-requisito à matéria que
+  depende dele, atualizadas ao mover, editar, excluir ou redimensionar a janela.
+- Criação de ligações direto no fluxograma, arrastando a bolinha do card até a
+  matéria dependente; clicar em uma seta remove a ligação (com confirmação).
+- Destaque, ao passar o mouse ou clicar em uma matéria, de tudo o que ela exige
+  e de tudo o que ela libera (direta ou indiretamente), esmaecendo o restante.
+- Prevenção de dependências circulares, com mensagem mostrando o ciclo
+  (ex.: "Cálculo I → Cálculo II → Cálculo I").
+
+### Alterado
+
+- Excluir uma matéria também remove as ligações associadas a ela.
+
 ## [0.3.0] - 2026-11-12
 
 ### Adicionado

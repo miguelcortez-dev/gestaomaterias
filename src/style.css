@@ -404,6 +404,7 @@ input:focus, select:focus {
 /* ---------- Cards de matéria ---------- */
 .card {
   position: relative;
+  z-index: 2;
   padding: 9px 12px 10px 13px;
   border: 1px solid #dce2eb;
   border-left: 4px solid #94a3b8;
@@ -514,3 +515,215 @@ input:focus, select:focus {
   border-radius: 2px;
   background: var(--cor-primaria);
 }
+
+/* ---------- Pré-requisitos (lista de seleção múltipla) ---------- */
+dialog.dialogo { overflow: auto; }
+
+.campo-prereq {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.campo-prereq legend { padding: 0; margin-bottom: 5px; }
+
+.campo-nota {
+  color: var(--cor-texto-suave);
+  font-weight: 500;
+}
+
+.lista-opcoes {
+  max-height: 210px;
+  margin-top: 6px;
+  overflow-y: auto;
+  border: 1px solid #cbd2de;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.lista-vazia { padding: 12px; }
+
+.opcoes-grupo-titulo {
+  position: sticky;
+  top: 0;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--cor-borda);
+  background: #f0f3f8;
+  color: var(--cor-texto-suave);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.opcao:hover { background: var(--cor-primaria-clara); }
+.opcao input { width: 16px; height: 16px; margin: 0; accent-color: var(--cor-primaria); }
+.opcao-codigo { color: var(--cor-texto-suave); font-size: 12px; font-weight: 700; }
+.opcao-nome { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.opcao.bloqueada { cursor: not-allowed; opacity: 0.55; }
+.opcao.bloqueada:hover { background: transparent; }
+
+.opcao-nota {
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #fdecec;
+  color: var(--cor-perigo);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- Setas de dependência (SVG) ---------- */
+:root {
+  --cor-seta: #8792a6;
+  --cor-seta-destaque: var(--cor-primaria);
+}
+
+/* Camadas: fundo das colunas → setas (z 1) → cards (z 2). */
+.setas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none; /* só as próprias setas recebem cliques */
+}
+
+.seta-linha {
+  fill: none;
+  stroke: var(--cor-seta);
+  stroke-width: 1.8;
+  marker-end: url(#ponta);
+  transition: stroke 0.12s, opacity 0.15s;
+}
+
+.ponta { fill: var(--cor-seta); }
+.ponta.destaque { fill: var(--cor-seta-destaque); }
+.ponta.alerta { fill: var(--cor-aviso); }
+
+/* Área de clique da seta: invisível e mais larga que a linha */
+.seta-area {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.seta:hover .seta-linha {
+  stroke: var(--cor-perigo);
+  stroke-width: 2.6;
+}
+
+/* Linha temporária ao criar uma ligação (acima dos cards) */
+.setas-temporarias { z-index: 3; }
+
+.seta-temporaria {
+  fill: none;
+  stroke: var(--cor-primaria);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+/* ---------- Ponto de conexão (bolinha) ---------- */
+.conector {
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--cor-primaria);
+  border-radius: 50%;
+  background: #fff;
+  transform: translateY(-50%);
+  cursor: crosshair;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.card:hover .conector,
+.modo-conexao .card[data-id] .conector { opacity: 1; }
+.conector:hover { transform: translateY(-50%) scale(1.25); background: var(--cor-primaria-clara); }
+
+.modo-conexao,
+.modo-conexao * { cursor: crosshair !important; }
+
+.card.alvo-conexao {
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px var(--cor-primaria-clara), var(--sombra-1);
+}
+
+/* ---------- Destaque de dependências ---------- */
+:root {
+  --cor-exige: #7c3aed;    /* o que a matéria exige (pré-requisitos) */
+  --cor-libera: #0f8a7e;   /* o que a matéria libera (dependentes) */
+}
+
+.card.selecionada { outline: 2px solid var(--cor-primaria); outline-offset: 2px; }
+
+.com-destaque .card { opacity: 0.28; }
+.com-destaque .card.foco,
+.com-destaque .card.exige,
+.com-destaque .card.libera { opacity: 1; }
+
+.card.foco { box-shadow: 0 0 0 3px #b8c4f5, 0 6px 16px rgba(20, 30, 50, 0.16); }
+.card.exige { box-shadow: 0 0 0 2px var(--cor-exige), var(--sombra-1); }
+.card.libera { box-shadow: 0 0 0 2px var(--cor-libera), var(--sombra-1); }
+
+.com-destaque .seta .seta-linha { opacity: 0.12; }
+.com-destaque .seta.destaque-exige .seta-linha,
+.com-destaque .seta.destaque-libera .seta-linha { opacity: 1; stroke-width: 2.4; }
+.seta.destaque-exige .seta-linha { stroke: var(--cor-exige); marker-end: url(#ponta-exige); }
+.seta.destaque-libera .seta-linha { stroke: var(--cor-libera); marker-end: url(#ponta-libera); }
+.ponta.exige { fill: var(--cor-exige); }
+.ponta.libera { fill: var(--cor-libera); }
+
+.legenda {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 140px);
+  padding: 8px 14px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 10px;
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-2);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.legenda strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.legenda-item::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legenda-item.exige::before { background: var(--cor-exige); }
+.legenda-item.libera::before { background: var(--cor-libera); }

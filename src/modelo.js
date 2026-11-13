@@ -12,8 +12,9 @@
  *     id, nome,
  *     codigo: string,          // opcional ('' quando vazio)
  *     cargaHoraria: number|null,
- *     periodoId                // período em que será cursada
- *   }]                         // a ordem do array define a ordem dos cards em cada coluna
+ *     periodoId,               // período em que será cursada
+ *     preRequisitos: [id]      // matérias que precisam ser cursadas antes
+ *   }]                       // a ordem do array define a ordem dos cards em cada coluna
  * }
  */
 (function (raiz, fabrica) {
@@ -55,6 +56,7 @@
       codigo: '',
       cargaHoraria: null,
       periodoId: null,
+      preRequisitos: [],
       ...campos,
     };
   }
@@ -71,6 +73,9 @@
       codigo: m.codigo === undefined || m.codigo === null ? '' : typeof m.codigo === 'string' ? m.codigo.trim() : m.codigo,
       cargaHoraria: m.cargaHoraria === undefined || m.cargaHoraria === '' ? null : m.cargaHoraria,
       periodoId: m.periodoId,
+      preRequisitos: m.preRequisitos === undefined
+        ? []
+        : Array.isArray(m.preRequisitos) ? [...new Set(m.preRequisitos)] : m.preRequisitos,
     };
   }
 
@@ -148,7 +153,127 @@
       if (!idsPeriodos.has(m.periodoId)) erro(`${ref}: período inexistente.`);
     });
 
+    // Pré-requisitos: devem apontar para matérias existentes e não formar ciclos.
+    let ligacoesValidas = true;
+    dados.materias.forEach((m, i) => {
+      if (!ehObjeto(m)) return;
+      const ref = typeof m.nome === 'string' && m.nome ? `Matéria "${m.nome}"` : `Matéria ${i + 1}`;
+      if (!Array.isArray(m.preRequisitos)) {
+        erro(`${ref}: lista de pré-requisitos inválida.`);
+        ligacoesValidas = false;
+        return;
+      }
+      if (new Set(m.preRequisitos).size !== m.preRequisitos.length) erro(`${ref}: pré-requisito repetido.`);
+      for (const id of m.preRequisitos) {
+        if (id === m.id) {
+          erro(`${ref}: uma matéria não pode ser pré-requisito de si mesma.`);
+          ligacoesValidas = false;
+        } else if (!idsMaterias.has(id)) {
+          erro(`${ref}: pré-requisito inexistente.`);
+          ligacoesValidas = false;
+        }
+      }
+    });
+    if (ligacoesValidas && temCiclo(dados.materias)) erro('Há dependências circulares entre as matérias.');
+
     return { ok: erros.length === 0, erros };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Grafo de dependências
+   * Uma seta vai do pré-requisito para a matéria que depende dele.
+   * ------------------------------------------------------------------ */
+
+  const indexar = (materias) => new Map(materias.map((m) => [m.id, m]));
+
+  /** Mapa id → ids das matérias que têm `id` como pré-requisito direto. */
+  function mapaDeDependentes(materias) {
+    const mapa = new Map();
+    for (const m of materias) {
+      for (const p of m.preRequisitos) {
+        if (!mapa.has(p)) mapa.set(p, []);
+        mapa.get(p).push(m.id);
+      }
+    }
+    return mapa;
+  }
+
+  /** Percorre o grafo a partir dos vizinhos de `id` e devolve todos os alcançados. */
+  function alcancaveis(id, vizinhos) {
+    const resultado = new Set();
+    const pilha = [...vizinhos(id)];
+    while (pilha.length) {
+      const atual = pilha.pop();
+      if (resultado.has(atual) || atual === id) continue;
+      resultado.add(atual);
+      pilha.push(...vizinhos(atual));
+    }
+    return resultado;
+  }
+
+  /** Tudo o que a matéria exige, direta ou indiretamente. */
+  function requisitosDe(materias, id) {
+    const mapa = indexar(materias);
+    return alcancaveis(id, (atual) => (mapa.get(atual) ? mapa.get(atual).preRequisitos : []));
+  }
+
+  /** Tudo o que a matéria libera (matérias que dependem dela, direta ou indiretamente). */
+  function liberadasPor(materias, id) {
+    const dependentes = mapaDeDependentes(materias);
+    return alcancaveis(id, (atual) => dependentes.get(atual) || []);
+  }
+
+  /**
+   * Caminho de pré-requisitos de `de` até `ate` (de exige … que exige ate),
+   * como lista de ids, ou null se não existir.
+   */
+  function caminhoDeRequisitos(materias, de, ate) {
+    const mapa = indexar(materias);
+    const anterior = new Map([[de, null]]);
+    const fila = [de];
+    while (fila.length) {
+      const atual = fila.shift();
+      if (atual === ate) {
+        const caminho = [];
+        for (let n = ate; n !== null; n = anterior.get(n)) caminho.unshift(n);
+        return caminho;
+      }
+      for (const p of (mapa.get(atual) ? mapa.get(atual).preRequisitos : [])) {
+        if (!anterior.has(p)) {
+          anterior.set(p, atual);
+          fila.push(p);
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Verifica se tornar `requisitoId` pré-requisito de `materiaId` criaria um ciclo.
+   * @returns {string[]|null} ids do ciclo na ordem das setas (ex.: [A, B, A]), ou null.
+   */
+  function cicloAoLigar(materias, requisitoId, materiaId) {
+    if (requisitoId === materiaId) return [materiaId, materiaId];
+    // Há ciclo se o futuro pré-requisito já depende (indiretamente) da matéria.
+    const caminho = caminhoDeRequisitos(materias, requisitoId, materiaId);
+    return caminho ? [...caminho.reverse(), materiaId] : null;
+  }
+
+  /** Detecta qualquer ciclo no grafo (busca em profundidade com três cores). */
+  function temCiclo(materias) {
+    const mapa = indexar(materias);
+    const cor = new Map(); // ausente = não visitado, 1 = em visita, 2 = concluído
+    const visitar = (id) => {
+      cor.set(id, 1);
+      for (const p of mapa.get(id).preRequisitos) {
+        if (!mapa.has(p)) continue;
+        if (cor.get(p) === 1) return true;
+        if (!cor.has(p) && visitar(p)) return true;
+      }
+      cor.set(id, 2);
+      return false;
+    };
+    return materias.some((m) => !cor.has(m.id) && visitar(m.id));
   }
 
   /** Rótulo de exibição de um período a partir do índice (0 → "1º período"). */
@@ -169,6 +294,10 @@
     criarMateria,
     normalizarDados,
     validarDados,
+    requisitosDe,
+    liberadasPor,
+    cicloAoLigar,
+    temCiclo,
     rotuloPeriodo,
   };
 });

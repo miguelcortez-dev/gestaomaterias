@@ -21,6 +21,9 @@
 
     <main id="quadro" class="quadro"></main>
 
+    <!-- Legenda exibida enquanto uma matéria está destacada -->
+    <div id="legenda-destaque" class="legenda" role="status" hidden></div>
+
     <button type="button" id="btn-nova-materia" class="fab" title="Nova matéria (Ctrl+N)" aria-label="Nova matéria" data-icone="mais" hidden></button>
 
     <!-- Cadastro e edição de matéria -->
@@ -47,6 +50,11 @@
             <select id="materia-periodo"></select>
           </label>
         </div>
+        <fieldset class="campo campo-prereq">
+          <legend class="campo-rotulo">Pré-requisitos <span id="prereq-resumo" class="campo-nota"></span></legend>
+          <input type="search" id="prereq-busca" placeholder="Filtrar matérias…" autocomplete="off" aria-label="Filtrar pré-requisitos">
+          <div id="prereq-lista" class="lista-opcoes" role="group" aria-label="Pré-requisitos"></div>
+        </fieldset>
         <p id="materia-erro" class="erro-form" hidden></p>
         <footer class="dialogo-rodape">
           <button type="button" class="btn btn-fantasma btn-texto-perigo" id="materia-excluir" data-icone="excluir" hidden>Excluir</button>
