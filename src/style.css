@@ -804,3 +804,78 @@ dialog.dialogo { overflow: auto; }
 }
 
 .seta.alerta:hover .seta-linha { stroke: var(--cor-perigo); }
+
+/* ---------- Painel de resumo ---------- */
+.resumo {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  padding: 12px 20px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--cor-borda);
+  background: var(--cor-superficie);
+}
+
+.resumo-bloco {
+  display: flex;
+  flex-direction: column;
+  min-width: 132px;
+  padding: 8px 14px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 10px;
+  background: #f8f9fc;
+}
+
+.resumo-rotulo {
+  color: var(--cor-texto-suave);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.resumo-valor {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.resumo-complemento {
+  color: var(--cor-texto-suave);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.resumo-progresso { min-width: 180px; }
+
+.resumo-barra {
+  height: 7px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e3e8f0;
+}
+
+.resumo-barra-preenchida {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--status-aprovada);
+  transition: width 0.3s;
+}
+
+.resumo-aviso {
+  border-color: #f3c27a;
+  background: var(--cor-aviso-fundo);
+  cursor: help;
+}
+
+.resumo-aviso .resumo-valor { color: var(--cor-aviso); }
+
+.separador {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: var(--cor-borda);
+}

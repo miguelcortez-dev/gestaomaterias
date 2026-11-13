@@ -8,7 +8,7 @@
  *  - aplicar as regras de segurança (sem navegação externa, sem permissões);
  *  - ler e gravar os dados do curso em disco, atendendo à interface via IPC.
  */
-const { app, BrowserWindow, Menu, ipcMain, screen, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, screen, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const fsp = fs.promises;
@@ -31,9 +31,14 @@ function caminhoDados() {
 }
 
 /** Lê, normaliza e valida um arquivo de dados. Lança erro se for inválido. */
-async function lerArquivoDeDados(caminho) {
+async function lerArquivoDeDados(caminho, { exigirEstrutura = false } = {}) {
   const texto = await fsp.readFile(caminho, 'utf8');
-  const dados = Modelo.normalizarDados(JSON.parse(texto));
+  const bruto = JSON.parse(texto);
+  // Na importação, um JSON qualquer não pode virar um curso vazio "válido".
+  if (exigirEstrutura && !(bruto && Array.isArray(bruto.periodos) && Array.isArray(bruto.materias))) {
+    throw new Error('O arquivo não parece conter dados exportados pelo Gestão de Matérias.');
+  }
+  const dados = Modelo.normalizarDados(bruto);
   const validacao = Modelo.validarDados(dados);
   if (!validacao.ok) throw new Error(validacao.erros.join(' '));
   return dados;
@@ -159,6 +164,71 @@ function registrarIpc() {
       return { ok: false, erro: erro.message };
     }
   });
+
+  ipcMain.handle('dados:exportar', async (evento, dados) => {
+    validarRemetente(evento);
+    return exportarDados(dados);
+  });
+
+  ipcMain.handle('dados:importar', async (evento) => {
+    validarRemetente(evento);
+    return importarDados();
+  });
+}
+
+/** Envia um comando do menu para a interface (ex.: "exportar"). */
+function enviarComandoDoMenu(comando) {
+  if (janelaPrincipal) janelaPrincipal.webContents.send('menu:comando', comando);
+}
+
+/* ------------------------------------------------------------------ *
+ * Exportar / importar (diálogos nativos de arquivo)
+ * ------------------------------------------------------------------ */
+
+const TAMANHO_MAXIMO_IMPORTACAO = 5 * 1024 * 1024; // 5 MB
+const FILTRO_JSON = [{ name: 'Arquivo JSON', extensions: ['json'] }];
+
+/** Pede um destino ao usuário e grava uma cópia dos dados em JSON. */
+async function exportarDados(dados) {
+  const validacao = Modelo.validarDados(dados);
+  if (!validacao.ok) return { ok: false, erro: validacao.erros.join(' ') };
+
+  const hoje = new Date().toLocaleDateString('sv-SE'); // AAAA-MM-DD
+  const { canceled, filePath } = await dialog.showSaveDialog(janelaPrincipal, {
+    title: 'Exportar dados do curso',
+    defaultPath: path.join(app.getPath('documents'), `curso-${hoje}.json`),
+    buttonLabel: 'Exportar',
+    filters: FILTRO_JSON,
+  });
+  if (canceled || !filePath) return { ok: false, cancelado: true };
+
+  try {
+    await fsp.writeFile(filePath, JSON.stringify(dados, null, 2), 'utf8');
+    return { ok: true, caminho: filePath };
+  } catch (erro) {
+    return { ok: false, erro: `Não foi possível gravar o arquivo: ${erro.message}` };
+  }
+}
+
+/** Pede um arquivo ao usuário, lê e valida. Não altera os dados atuais. */
+async function importarDados() {
+  const { canceled, filePaths } = await dialog.showOpenDialog(janelaPrincipal, {
+    title: 'Importar dados do curso',
+    buttonLabel: 'Importar',
+    properties: ['openFile'],
+    filters: FILTRO_JSON,
+  });
+  if (canceled || !filePaths || !filePaths.length) return { ok: false, cancelado: true };
+
+  const caminho = filePaths[0];
+  try {
+    const { size } = await fsp.stat(caminho);
+    if (size > TAMANHO_MAXIMO_IMPORTACAO) throw new Error('O arquivo é grande demais (máximo de 5 MB).');
+    return { ok: true, dados: await lerArquivoDeDados(caminho, { exigirEstrutura: true }), caminho };
+  } catch (erro) {
+    const mensagem = erro instanceof SyntaxError ? 'O arquivo não contém um JSON válido.' : erro.message;
+    return { ok: false, erro: mensagem };
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -283,7 +353,12 @@ function montarMenu() {
 
   modelo.push({
     label: 'Arquivo',
-    submenu: [{ role: 'quit', label: 'Sair' }],
+    submenu: [
+      { label: 'Exportar…', accelerator: 'CmdOrCtrl+E', click: () => enviarComandoDoMenu('exportar') },
+      { label: 'Importar…', accelerator: 'CmdOrCtrl+O', click: () => enviarComandoDoMenu('importar') },
+      { type: 'separator' },
+      { role: 'quit', label: 'Sair' },
+    ],
   });
 
   // Necessário para copiar/colar nos campos de texto (principalmente no macOS).

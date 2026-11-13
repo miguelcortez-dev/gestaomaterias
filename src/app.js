@@ -708,6 +708,51 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Exportar / importar
+   * ------------------------------------------------------------------ */
+
+  async function exportarDados() {
+    const resposta = await App.ipc.exportar(App.estado.obter());
+    if (resposta.cancelado) return;
+    if (resposta.ok) toast(`Dados exportados para ${resposta.caminho}`, 'sucesso', 6000);
+    else toast('Não foi possível exportar: ' + resposta.erro, 'erro', 8000);
+  }
+
+  async function importarDados() {
+    const resposta = await App.ipc.importar();
+    if (resposta.cancelado) return;
+    if (!resposta.ok) {
+      toast('Não foi possível importar: ' + resposta.erro, 'erro', 8000);
+      return;
+    }
+
+    const { materias, periodos } = resposta.dados;
+    const confirmado = await App.ui.confirmar({
+      titulo: 'Importar dados?',
+      mensagem: `Os dados atuais serão substituídos pelos do arquivo (${materias.length} matéria(s) em ${periodos.length} período(s)).`,
+      confirmar: 'Importar',
+    });
+    if (!confirmado) return;
+
+    if (!App.estado.alterar('Importar dados', () => resposta.dados)) {
+      toast('O arquivo contém os mesmos dados atuais; nada foi alterado.');
+      return;
+    }
+    toast('Dados importados com sucesso.', 'sucesso');
+    if (!App.estado.obter().configurado) abrirConfiguracao();
+  }
+
+  function ligarArquivos() {
+    $('btn-exportar').addEventListener('click', exportarDados);
+    $('btn-importar').addEventListener('click', importarDados);
+    App.ipc.aoComandoDoMenu((comando) => {
+      if (dialogoAberto()) return; // evita sobrepor diálogos
+      if (comando === 'exportar') exportarDados();
+      else if (comando === 'importar') importarDados();
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Avisos de validação (não bloqueiam a ação)
    * ------------------------------------------------------------------ */
 
@@ -825,6 +870,7 @@
     ligarConexoes();
     ligarDestaque();
     ligarAvisos();
+    ligarArquivos();
     ligarAtalhos();
 
     // As setas dependem da posição dos cards: redesenha quando o layout muda

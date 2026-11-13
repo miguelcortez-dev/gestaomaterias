@@ -15,9 +15,15 @@
         <h1>Gestão de Matérias</h1>
       </div>
       <div class="acoes">
+        <button type="button" id="btn-exportar" class="btn btn-fantasma" data-icone="exportar" title="Exportar os dados para um arquivo JSON (Ctrl+E)">Exportar</button>
+        <button type="button" id="btn-importar" class="btn btn-fantasma" data-icone="importar" title="Importar dados de um arquivo JSON (Ctrl+O)">Importar</button>
+        <span class="separador" aria-hidden="true"></span>
         <button type="button" id="btn-config" class="btn btn-fantasma" data-icone="ajustes" title="Configurações do curso">Configurações</button>
       </div>
     </header>
+
+    <!-- Painel de resumo do curso (preenchido por render.js) -->
+    <section id="resumo" class="resumo" aria-label="Resumo do curso" hidden></section>
 
     <main id="quadro" class="quadro"></main>
 
