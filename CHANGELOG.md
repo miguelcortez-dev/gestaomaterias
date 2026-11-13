@@ -7,6 +7,18 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- Painel de resumo acima do fluxograma: total de matérias, aprovadas (com
+  quantas estão sendo cursadas ou reprovadas), percentual concluído com barra
+  de progresso, carga horária concluída em relação ao total, períodos previstos
+  e extras, e a quantidade de avisos de pré-requisito.
+- Exportar os dados do curso para um arquivo JSON (botão "Exportar", menu
+  Arquivo › Exportar… ou Ctrl+E), escolhendo o destino em um diálogo nativo.
+- Importar dados de um arquivo JSON (botão "Importar", menu Arquivo › Importar…
+  ou Ctrl+O): o arquivo é validado (limite de 5 MB) e o app pede confirmação
+  antes de substituir os dados atuais.
+
 ## [0.5.0] - 2026-11-12
 
 ### Adicionado
