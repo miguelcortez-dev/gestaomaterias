@@ -7,6 +7,16 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- Pergunta, na primeira execução, quantos períodos (semestres) o curso tem;
+  o valor pode ser alterado a qualquer momento em "Configurações".
+- Fluxograma com um período por coluna ("1º período", "2º período"...), em
+  ordem da esquerda para a direita, com rolagem horizontal.
+- Botão "+ Período" para adicionar períodos extras, identificados com o selo
+  "Extra" e cor diferente.
+- Remoção de períodos vazios, com confirmação.
+
 ## [0.1.0] - 2026-11-12
 
 ### Adicionado
