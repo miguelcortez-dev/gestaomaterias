@@ -7,6 +7,8 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.2.0] - 2026-11-12
+
 ### Adicionado
 
 - Pergunta, na primeira execução, quantos períodos (semestres) o curso tem;
