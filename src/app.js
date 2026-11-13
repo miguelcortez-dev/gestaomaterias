@@ -8,14 +8,6 @@
   const { el, toast } = App.ui;
   const $ = (id) => document.getElementById(id);
 
-  /** Mostra o conteúdo principal conforme o estado atual dos dados. */
-  function renderizar(dados) {
-    const texto = dados.configurado
-      ? `${dados.periodos.length} período(s) configurado(s).`
-      : 'Seu fluxograma aparecerá aqui.';
-    $('quadro').replaceChildren(el('div', { class: 'vazio' }, el('p', { class: 'vazio-titulo' }, texto)));
-  }
-
   /* ------------------------------------------------------------------ *
    * Configuração do curso (número de períodos previstos)
    * ------------------------------------------------------------------ */
@@ -110,7 +102,7 @@
       return;
     }
     ligarConfiguracao();
-    App.estado.aoAlterar(renderizar);
+    App.estado.aoAlterar(App.render.renderizar);
     App.estado.iniciar(resposta.dados);
     if (resposta.aviso) toast(resposta.aviso, 'aviso', 10000);
     if (!resposta.dados.configurado) abrirConfiguracao();
