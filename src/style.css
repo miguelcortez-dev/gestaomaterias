@@ -782,3 +782,25 @@ dialog.dialogo { overflow: auto; }
   color: var(--cor-texto-suave);
   font-size: 13px;
 }
+
+/* ---------- Avisos: matéria antes (ou no mesmo período) de um pré-requisito ---------- */
+.card.alerta {
+  background: var(--cor-aviso-fundo);
+  border-top-color: #f3c27a;
+  border-right-color: #f3c27a;
+  border-bottom-color: #f3c27a;
+}
+
+.card-alerta {
+  display: inline-flex;
+  color: var(--cor-aviso);
+  cursor: help;
+}
+
+.seta.alerta .seta-linha {
+  stroke: var(--cor-aviso);
+  stroke-dasharray: 6 4;
+  marker-end: url(#ponta-alerta);
+}
+
+.seta.alerta:hover .seta-linha { stroke: var(--cor-perigo); }

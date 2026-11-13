@@ -708,6 +708,36 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Avisos de validação (não bloqueiam a ação)
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Após cada alteração, avisa se surgiu alguma matéria no mesmo período ou
+   * antes de um de seus pré-requisitos. O card e a seta já ficam destacados;
+   * o aviso só chama a atenção para o que acabou de acontecer.
+   */
+  function ligarAvisos() {
+    let conflitosAnteriores = null; // null = primeira carga, não avisa
+    App.estado.aoAlterar((dados) => {
+      const atuais = Modelo.conflitosDePeriodo(dados);
+      const chave = (c) => `${c.requisito}>${c.materia}`;
+      if (conflitosAnteriores) {
+        const novos = atuais.filter((c) => !conflitosAnteriores.has(chave(c)));
+        if (novos.length) {
+          const { requisito, materia } = novos[0];
+          toast(
+            `Atenção: "${nomeMateria(materia)}" está no mesmo período ou antes do seu pré-requisito "${nomeMateria(requisito)}".` +
+              (novos.length > 1 ? ` (e mais ${novos.length - 1})` : ''),
+            'aviso',
+            6000,
+          );
+        }
+      }
+      conflitosAnteriores = new Set(atuais.map(chave));
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Quadro: cliques e atalhos de teclado
    * ------------------------------------------------------------------ */
 
@@ -794,6 +824,7 @@
     ligarArrastarCards();
     ligarConexoes();
     ligarDestaque();
+    ligarAvisos();
     ligarAtalhos();
 
     // As setas dependem da posição dos cards: redesenha quando o layout muda

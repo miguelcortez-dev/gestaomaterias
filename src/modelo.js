@@ -295,6 +295,23 @@
     return materias.some((m) => !cor.has(m.id) && visitar(m.id));
   }
 
+  /**
+   * Ligações em que a matéria está no mesmo período ou antes de um de seus
+   * pré-requisitos (situação permitida, mas que merece aviso).
+   * @returns {{requisito: string, materia: string}[]}
+   */
+  function conflitosDePeriodo(dados) {
+    const indicePeriodo = new Map(dados.periodos.map((p, i) => [p.id, i]));
+    const indiceMateria = new Map(dados.materias.map((m) => [m.id, indicePeriodo.get(m.periodoId)]));
+    const conflitos = [];
+    for (const m of dados.materias) {
+      for (const requisito of m.preRequisitos) {
+        if (indiceMateria.get(m.id) <= indiceMateria.get(requisito)) conflitos.push({ requisito, materia: m.id });
+      }
+    }
+    return conflitos;
+  }
+
   /** Rótulo de exibição de um período a partir do índice (0 → "1º período"). */
   function rotuloPeriodo(indice) {
     return `${indice + 1}º período`;
@@ -318,6 +335,7 @@
     liberadasPor,
     cicloAoLigar,
     temCiclo,
+    conflitosDePeriodo,
     rotuloPeriodo,
   };
 });
