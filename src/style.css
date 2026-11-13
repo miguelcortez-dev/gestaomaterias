@@ -608,3 +608,56 @@ dialog.dialogo { overflow: auto; }
 .ponta { fill: var(--cor-seta); }
 .ponta.destaque { fill: var(--cor-seta-destaque); }
 .ponta.alerta { fill: var(--cor-aviso); }
+
+/* Área de clique da seta: invisível e mais larga que a linha */
+.seta-area {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.seta:hover .seta-linha {
+  stroke: var(--cor-perigo);
+  stroke-width: 2.6;
+}
+
+/* Linha temporária ao criar uma ligação (acima dos cards) */
+.setas-temporarias { z-index: 3; }
+
+.seta-temporaria {
+  fill: none;
+  stroke: var(--cor-primaria);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+/* ---------- Ponto de conexão (bolinha) ---------- */
+.conector {
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--cor-primaria);
+  border-radius: 50%;
+  background: #fff;
+  transform: translateY(-50%);
+  cursor: crosshair;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.card:hover .conector,
+.modo-conexao .card[data-id] .conector { opacity: 1; }
+.conector:hover { transform: translateY(-50%) scale(1.25); background: var(--cor-primaria-clara); }
+
+.modo-conexao,
+.modo-conexao * { cursor: crosshair !important; }
+
+.card.alvo-conexao {
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px var(--cor-primaria-clara), var(--sombra-1);
+}

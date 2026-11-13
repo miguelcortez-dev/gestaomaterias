@@ -34,12 +34,13 @@
       ]),
     );
 
-    const svg = document.createElementNS(SVG_NS, 'svg');
-    svg.id = 'setas';
-    svg.classList.add('setas');
+    const svg = svgEl('svg', { id: 'setas', class: 'setas' });
+    // Camada própria, acima dos cards, para a linha temporária ao criar ligações.
+    const svgTemporario = svgEl('svg', { id: 'setas-temporarias', class: 'setas setas-temporarias' });
     const conteudo = el('div', { class: 'quadro-conteudo', id: 'quadro-conteudo' }, [
       el('div', { class: 'colunas', id: 'colunas' }, colunas),
       svg,
+      svgTemporario,
     ]);
     quadro.replaceChildren(conteudo);
     quadro.scrollLeft = scrollLeft;
@@ -92,8 +93,10 @@
     if (!conteudo || !svg) return;
     const dados = App.estado.obter();
 
-    svg.setAttribute('width', conteudo.offsetWidth);
-    svg.setAttribute('height', conteudo.offsetHeight);
+    for (const camada of conteudo.querySelectorAll('svg.setas')) {
+      camada.setAttribute('width', conteudo.offsetWidth);
+      camada.setAttribute('height', conteudo.offsetHeight);
+    }
     const base = conteudo.getBoundingClientRect();
 
     // Posição de cada card, relativa ao conteúdo do quadro.
@@ -141,18 +144,41 @@
       );
 
       const grupo = svgEl('g', { class: 'seta' });
-      grupo.dataset.de = ligacao.de;
-      grupo.dataset.para = ligacao.para;
+      Object.assign(grupo.dataset, { acao: 'remover-ligacao', de: ligacao.de, para: ligacao.para });
       const titulo = svgEl('title');
-      titulo.textContent = `${nomes.get(ligacao.de)} → ${nomes.get(ligacao.para)}`;
-      grupo.append(titulo, svgEl('path', { class: 'seta-linha', d }));
+      titulo.textContent = `${nomes.get(ligacao.de)} → ${nomes.get(ligacao.para)} (clique para remover)`;
+      // A "área" é uma linha larga e invisível que facilita acertar o clique.
+      grupo.append(titulo, svgEl('path', { class: 'seta-area', d }), svgEl('path', { class: 'seta-linha', d }));
       return grupo;
     });
 
     svg.replaceChildren(criarDefinicoes(), ...grupos);
   }
 
-  App.render = { renderizar, desenharSetas };
+  /** Coordenadas de um ponto da tela relativas ao conteúdo do quadro. */
+  function pontoNoConteudo(clientX, clientY) {
+    const base = document.getElementById('quadro-conteudo').getBoundingClientRect();
+    return { x: clientX - base.left, y: clientY - base.top };
+  }
+
+  /** Linha tracejada exibida enquanto o usuário arrasta para criar uma ligação. */
+  function desenharLinhaTemporaria(x1, y1, x2, y2) {
+    const svg = document.getElementById('setas-temporarias');
+    if (!svg) return;
+    let linha = svg.querySelector('.seta-temporaria');
+    if (!linha) {
+      linha = svgEl('path', { class: 'seta-temporaria' });
+      svg.append(linha);
+    }
+    linha.setAttribute('d', caminhoCurvo(x1, y1, x2, y2));
+  }
+
+  function limparLinhaTemporaria() {
+    const svg = document.getElementById('setas-temporarias');
+    if (svg) svg.replaceChildren();
+  }
+
+  App.render = { renderizar, desenharSetas, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
 
   /** Uma coluna = um período. Períodos além do previsto são marcados como "Extra". */
   function renderizarColuna(dados, periodo, indice) {
@@ -223,6 +249,12 @@
       materia.codigo ? el('div', { class: 'card-codigo' }, materia.codigo) : null,
       el('div', { class: 'card-nome' }, materia.nome),
       detalhes.length ? el('div', { class: 'card-rodape' }, detalhes) : null,
+      // Ponto de conexão: arrastar daqui até outro card cria a ligação.
+      el('span', {
+        class: 'conector',
+        title: 'Arraste até a matéria que depende desta para ligá-las',
+        'aria-hidden': 'true',
+      }),
     ]);
   }
 

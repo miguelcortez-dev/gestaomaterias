@@ -403,6 +403,11 @@
     quadro.addEventListener('dragstart', (evento) => {
       const card = evento.target instanceof Element && evento.target.closest('.card');
       if (!card) return;
+      if (conexao) {
+        // O usuário está criando uma ligação pela bolinha, não movendo o card.
+        evento.preventDefault();
+        return;
+      }
       arrastando = card.dataset.id;
       evento.dataTransfer.effectAllowed = 'move';
       evento.dataTransfer.setData('text/plain', arrastando);
@@ -447,6 +452,112 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Ligações (pré-requisitos) direto no fluxograma
+   * ------------------------------------------------------------------ */
+
+  /** Torna `requisitoId` pré-requisito de `materiaId`, se não criar ciclo. */
+  function ligarMaterias(requisitoId, materiaId) {
+    const dados = App.estado.obter();
+    const materia = dados.materias.find((m) => m.id === materiaId);
+    if (!materia || requisitoId === materiaId) return;
+    if (materia.preRequisitos.includes(requisitoId)) {
+      toast('Essa ligação já existe.');
+      return;
+    }
+    const ciclo = Modelo.cicloAoLigar(dados.materias, requisitoId, materiaId);
+    if (ciclo) {
+      toast(`Ligação não permitida: criaria uma dependência circular (${descreverCiclo(ciclo)}).`, 'erro', 7000);
+      return;
+    }
+    App.estado.alterar('Ligar matérias', (rascunho) => {
+      rascunho.materias.find((m) => m.id === materiaId).preRequisitos.push(requisitoId);
+    });
+  }
+
+  async function removerLigacao(requisitoId, materiaId) {
+    const confirmado = await App.ui.confirmar({
+      titulo: 'Remover ligação?',
+      mensagem: `"${nomeMateria(requisitoId)}" deixará de ser pré-requisito de "${nomeMateria(materiaId)}".`,
+      confirmar: 'Remover',
+      perigo: true,
+    });
+    if (!confirmado) return;
+    App.estado.alterar('Remover ligação', (rascunho) => {
+      const materia = rascunho.materias.find((m) => m.id === materiaId);
+      if (materia) materia.preRequisitos = materia.preRequisitos.filter((p) => p !== requisitoId);
+    });
+  }
+
+  /** Ligação em criação: { origemId, card } enquanto o usuário arrasta da bolinha. */
+  let conexao = null;
+
+  /** Card sob o ponteiro (exceto o de origem), candidato a receber a ligação. */
+  function cardSobPonteiro(evento) {
+    const alvo = document.elementFromPoint(evento.clientX, evento.clientY);
+    const card = alvo && alvo.closest('.card');
+    return card && card.dataset.id !== conexao.origemId ? card : null;
+  }
+
+  /** Rola o quadro quando o ponteiro chega perto das bordas. */
+  function rolarNasBordas(evento) {
+    const quadro = $('quadro');
+    const r = quadro.getBoundingClientRect();
+    const margem = 48;
+    const passo = 18;
+    if (evento.clientX > r.right - margem) quadro.scrollLeft += passo;
+    else if (evento.clientX < r.left + margem) quadro.scrollLeft -= passo;
+    if (evento.clientY > r.bottom - margem) quadro.scrollTop += passo;
+    else if (evento.clientY < r.top + margem) quadro.scrollTop -= passo;
+  }
+
+  function atualizarConexao(evento) {
+    rolarNasBordas(evento);
+    const origem = conexao.card.getBoundingClientRect();
+    const inicio = App.render.pontoNoConteudo(origem.right, origem.top + origem.height / 2);
+    const fim = App.render.pontoNoConteudo(evento.clientX, evento.clientY);
+    App.render.desenharLinhaTemporaria(inicio.x, inicio.y, fim.x, fim.y);
+
+    const alvo = cardSobPonteiro(evento);
+    document.querySelectorAll('.card.alvo-conexao').forEach((c) => c !== alvo && c.classList.remove('alvo-conexao'));
+    if (alvo) alvo.classList.add('alvo-conexao');
+  }
+
+  function encerrarConexao() {
+    conexao = null;
+    document.body.classList.remove('modo-conexao');
+    document.querySelectorAll('.card.alvo-conexao').forEach((c) => c.classList.remove('alvo-conexao'));
+    App.render.limparLinhaTemporaria();
+  }
+
+  function ligarConexoes() {
+    $('quadro').addEventListener('pointerdown', (evento) => {
+      const conector = evento.target.closest('.conector');
+      if (!conector || evento.button !== 0) return;
+      evento.preventDefault(); // não inicia o arraste do card nem seleção de texto
+      evento.stopPropagation();
+      const card = conector.closest('.card');
+      conexao = { origemId: card.dataset.id, card };
+      conector.setPointerCapture(evento.pointerId);
+      document.body.classList.add('modo-conexao');
+      atualizarConexao(evento);
+    });
+
+    document.addEventListener('pointermove', (evento) => {
+      if (conexao) atualizarConexao(evento);
+    });
+
+    document.addEventListener('pointerup', (evento) => {
+      if (!conexao) return;
+      const alvo = cardSobPonteiro(evento);
+      const origemId = conexao.origemId;
+      encerrarConexao();
+      if (alvo) ligarMaterias(origemId, alvo.dataset.id);
+    });
+
+    document.addEventListener('pointercancel', () => conexao && encerrarConexao());
+  }
+
+  /* ------------------------------------------------------------------ *
    * Quadro: cliques e atalhos de teclado
    * ------------------------------------------------------------------ */
 
@@ -455,12 +566,13 @@
     $('quadro').addEventListener('click', (evento) => {
       const alvo = evento.target.closest('[data-acao]');
       if (!alvo) return;
-      const { acao, periodoId, id } = alvo.dataset;
+      const { acao, periodoId, id, de, para } = alvo.dataset;
       if (acao === 'adicionar-periodo') adicionarPeriodo();
       else if (acao === 'remover-periodo') removerPeriodo(periodoId);
       else if (acao === 'nova-materia') abrirFormularioMateria(null, periodoId);
       else if (acao === 'editar-materia') abrirFormularioMateria(id);
       else if (acao === 'excluir-materia') excluirMateria(id);
+      else if (acao === 'remover-ligacao') removerLigacao(de, para);
     });
 
     // Duplo clique no card abre a edição.
@@ -522,6 +634,7 @@
     ligarQuadro();
     ligarFormularioMateria();
     ligarArrastarCards();
+    ligarConexoes();
     ligarAtalhos();
 
     // As setas dependem da posição dos cards: redesenha quando o layout muda
