@@ -3,13 +3,15 @@
  * Processo principal do Electron.
  *
  * Responsabilidades:
- *  - criar a janela principal (instância única);
+ *  - criar a janela principal (instância única, lembrando tamanho e posição);
  *  - montar o menu em português;
  *  - aplicar as regras de segurança (sem navegação externa, sem permissões).
  */
-const { app, BrowserWindow, Menu, session } = require('electron');
+const { app, BrowserWindow, Menu, screen, session } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
 
+const ARQUIVO_JANELA = 'janela.json';
 const TAMANHO_PADRAO = { width: 1280, height: 800 };
 const TAMANHO_MINIMO = { width: 960, height: 600 };
 
@@ -20,9 +22,59 @@ let janelaPrincipal = null;
  * Janela principal
  * ------------------------------------------------------------------ */
 
+function caminhoEstadoJanela() {
+  return path.join(app.getPath('userData'), ARQUIVO_JANELA);
+}
+
+/**
+ * Lê o tamanho/posição salvos da última sessão. Descarta a posição se ela
+ * estiver fora de todos os monitores atuais (ex.: monitor externo desconectado).
+ */
+function lerEstadoJanela() {
+  try {
+    const salvo = JSON.parse(fs.readFileSync(caminhoEstadoJanela(), 'utf8'));
+    if (!['x', 'y', 'width', 'height'].every((k) => Number.isFinite(salvo[k]))) return { ...TAMANHO_PADRAO };
+
+    const estado = {
+      width: Math.max(Math.round(salvo.width), TAMANHO_MINIMO.width),
+      height: Math.max(Math.round(salvo.height), TAMANHO_MINIMO.height),
+      maximizado: salvo.maximizado === true,
+    };
+    const visivel = screen.getAllDisplays().some(({ workArea: a }) =>
+      salvo.x < a.x + a.width - 80 &&
+      salvo.x + salvo.width > a.x + 80 &&
+      salvo.y >= a.y - 20 &&
+      salvo.y < a.y + a.height - 80);
+    if (visivel) {
+      estado.x = Math.round(salvo.x);
+      estado.y = Math.round(salvo.y);
+    }
+    return estado;
+  } catch {
+    return { ...TAMANHO_PADRAO };
+  }
+}
+
+function salvarEstadoJanela(estado) {
+  if (!estado) return;
+  try {
+    fs.mkdirSync(path.dirname(caminhoEstadoJanela()), { recursive: true });
+    fs.writeFileSync(caminhoEstadoJanela(), JSON.stringify(estado));
+  } catch (erro) {
+    console.error('Não foi possível salvar o estado da janela:', erro);
+  }
+}
+
 function criarJanela() {
+  const estado = lerEstadoJanela();
+  const posicao = { width: estado.width, height: estado.height };
+  if (estado.x !== undefined) {
+    posicao.x = estado.x;
+    posicao.y = estado.y;
+  }
+
   janelaPrincipal = new BrowserWindow({
-    ...TAMANHO_PADRAO,
+    ...posicao,
     minWidth: TAMANHO_MINIMO.width,
     minHeight: TAMANHO_MINIMO.height,
     show: false, // exibe só quando o conteúdo estiver pronto (evita tela branca)
@@ -38,7 +90,23 @@ function criarJanela() {
     },
   });
 
-  janelaPrincipal.once('ready-to-show', () => janelaPrincipal.show());
+  janelaPrincipal.once('ready-to-show', () => {
+    if (estado.maximizado) janelaPrincipal.maximize();
+    janelaPrincipal.show();
+  });
+  // Guarda tamanho/posição em memória a cada mudança e grava ao fechar.
+  // O evento 'closed' serve de garantia para fechamentos que não emitem 'close'.
+  const janela = janelaPrincipal;
+  let ultimoEstado = null;
+  const atualizarEstado = () => {
+    if (!janela.isDestroyed()) ultimoEstado = { ...janela.getNormalBounds(), maximizado: janela.isMaximized() };
+  };
+  ['resize', 'move', 'maximize', 'unmaximize', 'show'].forEach((ev) => janela.on(ev, atualizarEstado));
+  janela.on('close', () => {
+    atualizarEstado();
+    salvarEstadoJanela(ultimoEstado);
+  });
+  janela.on('closed', () => salvarEstadoJanela(ultimoEstado));
   janelaPrincipal.on('closed', () => {
     janelaPrincipal = null;
   });
