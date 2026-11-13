@@ -872,3 +872,10 @@ dialog.dialogo { overflow: auto; }
 }
 
 .resumo-aviso .resumo-valor { color: var(--cor-aviso); }
+
+.separador {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: var(--cor-borda);
+}
