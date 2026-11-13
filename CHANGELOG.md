@@ -7,6 +7,8 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.1.0] - 2026-11-12
+
 ### Adicionado
 
 - Estrutura do projeto Electron com interface em HTML, CSS e JavaScript puro.
