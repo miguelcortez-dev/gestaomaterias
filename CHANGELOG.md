@@ -7,6 +7,8 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.3.0] - 2026-11-12
+
 ### Adicionado
 
 - Botão "+" flutuante (e atalho Ctrl+N) para cadastrar matérias em um

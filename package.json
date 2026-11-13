@@ -1,7 +1,7 @@
 {
   "name": "gestao-materias",
   "productName": "Gestão de Matérias",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Controle das matérias da faculdade em forma de fluxograma, para uso offline no computador.",
   "main": "main.js",
   "private": true,
