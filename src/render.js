@@ -15,6 +15,7 @@
     const { scrollLeft, scrollTop } = quadro;
 
     document.getElementById('btn-nova-materia').hidden = !dados.configurado;
+    renderizarResumo(dados);
 
     if (!dados.configurado) {
       quadro.replaceChildren(
@@ -253,6 +254,63 @@
   }
 
   App.render = { renderizar, desenharSetas, aplicarDestaque, descreverReprovacao, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
+
+  /* ------------------------------------------------------------------ *
+   * Painel de resumo
+   * ------------------------------------------------------------------ */
+
+  const formatarNumero = (n) => n.toLocaleString('pt-BR');
+
+  function blocoResumo(rotulo, valor, complemento, extra = {}) {
+    return el('div', { class: 'resumo-bloco' + (extra.classe ? ` ${extra.classe}` : ''), title: extra.titulo }, [
+      el('span', { class: 'resumo-rotulo' }, rotulo),
+      el('span', { class: 'resumo-valor' }, valor),
+      complemento ? el('span', { class: 'resumo-complemento' }, complemento) : null,
+      extra.filho || null,
+    ]);
+  }
+
+  /** Total de matérias, aprovadas, % concluído e carga horária concluída. */
+  function renderizarResumo(dados) {
+    const painel = document.getElementById('resumo');
+    painel.hidden = !dados.configurado;
+    if (!dados.configurado) return;
+
+    const total = dados.materias.length;
+    const contar = (status) => dados.materias.filter((m) => m.status === status).length;
+    const aprovadas = contar('Aprovada');
+    const percentual = total ? Math.round((aprovadas / total) * 100) : 0;
+    const somaCh = (lista) => lista.reduce((soma, m) => soma + (m.cargaHoraria || 0), 0);
+    const chTotal = somaCh(dados.materias);
+    const chConcluida = somaCh(dados.materias.filter((m) => m.status === 'Aprovada'));
+    const extras = Math.max(0, dados.periodos.length - dados.periodosBase);
+    const avisos = Modelo.conflitosDePeriodo(dados).length;
+
+    const barra = el('div', {
+      class: 'resumo-barra',
+      role: 'progressbar',
+      'aria-valuenow': String(percentual),
+      'aria-valuemin': '0',
+      'aria-valuemax': '100',
+      'aria-label': 'Percentual concluído',
+    }, el('div', { class: 'resumo-barra-preenchida' }));
+    barra.firstChild.style.width = `${percentual}%`;
+
+    const blocos = [
+      blocoResumo('Matérias', formatarNumero(total)),
+      blocoResumo('Aprovadas', formatarNumero(aprovadas), `${contar('Cursando')} cursando · ${contar('Reprovada')} reprovada(s)`),
+      blocoResumo('Concluído', `${percentual}%`, null, { classe: 'resumo-progresso', filho: barra }),
+      blocoResumo('Carga horária concluída', `${formatarNumero(chConcluida)} h`, `de ${formatarNumero(chTotal)} h`),
+      blocoResumo('Períodos', formatarNumero(dados.periodos.length), extras ? `${dados.periodosBase} previstos + ${extras} extra(s)` : 'conforme previsto'),
+      avisos
+        ? blocoResumo('Avisos', formatarNumero(avisos), 'matéria(s) antes de pré-requisito', {
+          classe: 'resumo-aviso',
+          titulo: 'Matérias no mesmo período ou antes de um pré-requisito (cards em laranja)',
+        })
+        : null,
+    ];
+    painel.replaceChildren(...blocos.filter(Boolean));
+  }
 
   /** Uma coluna = um período. Períodos além do previsto são marcados como "Extra". */
   function renderizarColuna(dados, periodo, indice, alertas) {
