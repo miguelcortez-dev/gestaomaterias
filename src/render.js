@@ -88,12 +88,25 @@
     const detalhes = [];
     if (materia.cargaHoraria !== null) detalhes.push(el('span', { class: 'card-ch' }, `${materia.cargaHoraria} h`));
 
+    const acoes = el('div', { class: 'card-acoes' }, [
+      el('button', {
+        type: 'button', class: 'btn-mini', title: 'Editar', 'aria-label': `Editar ${materia.nome}`,
+        dataset: { acao: 'editar-materia', id: materia.id },
+      }, icone('editar')),
+      el('button', {
+        type: 'button', class: 'btn-mini perigo', title: 'Excluir', 'aria-label': `Excluir ${materia.nome}`,
+        dataset: { acao: 'excluir-materia', id: materia.id },
+      }, icone('excluir')),
+    ]);
+
     return el('article', {
       class: 'card',
       tabindex: '0',
       'aria-label': materia.nome,
+      title: 'Clique duas vezes para editar',
       dataset: { id: materia.id },
     }, [
+      acoes,
       materia.codigo ? el('div', { class: 'card-codigo' }, materia.codigo) : null,
       el('div', { class: 'card-nome' }, materia.nome),
       detalhes.length ? el('div', { class: 'card-rodape' }, detalhes) : null,

@@ -165,6 +165,7 @@
     $('materia-ch').value = materia && materia.cargaHoraria !== null ? materia.cargaHoraria : '';
     preencherPeriodos($('materia-periodo'), dados, materia ? materia.periodoId : periodoId || dados.periodos[0].id);
     $('materia-erro').hidden = true;
+    $('materia-excluir').hidden = !materia;
 
     $('dlg-materia').showModal();
     $('materia-nome').focus();
@@ -227,10 +228,32 @@
     if (aplicado || materiaEmEdicao) $('dlg-materia').close();
   }
 
+  /**
+   * Exclui uma matéria após confirmação.
+   * @returns {Promise<boolean>} true se foi excluída.
+   */
+  async function excluirMateria(id) {
+    const materia = App.estado.obter().materias.find((m) => m.id === id);
+    if (!materia) return false;
+    const confirmado = await App.ui.confirmar({
+      titulo: 'Excluir matéria?',
+      mensagem: `A matéria "${materia.nome}" será excluída do fluxograma.`,
+      confirmar: 'Excluir',
+      perigo: true,
+    });
+    if (!confirmado) return false;
+    return App.estado.alterar('Excluir matéria', (rascunho) => {
+      rascunho.materias = rascunho.materias.filter((m) => m.id !== id);
+    });
+  }
+
   function ligarFormularioMateria() {
     $('btn-nova-materia').addEventListener('click', () => abrirFormularioMateria());
     $('form-materia').addEventListener('submit', salvarMateria);
     $('materia-cancelar').addEventListener('click', () => $('dlg-materia').close());
+    $('materia-excluir').addEventListener('click', async () => {
+      if (await excluirMateria(materiaEmEdicao)) $('dlg-materia').close();
+    });
   }
 
   /* ------------------------------------------------------------------ *
@@ -242,10 +265,29 @@
     $('quadro').addEventListener('click', (evento) => {
       const alvo = evento.target.closest('[data-acao]');
       if (!alvo) return;
-      const { acao, periodoId } = alvo.dataset;
+      const { acao, periodoId, id } = alvo.dataset;
       if (acao === 'adicionar-periodo') adicionarPeriodo();
       else if (acao === 'remover-periodo') removerPeriodo(periodoId);
       else if (acao === 'nova-materia') abrirFormularioMateria(null, periodoId);
+      else if (acao === 'editar-materia') abrirFormularioMateria(id);
+      else if (acao === 'excluir-materia') excluirMateria(id);
+    });
+
+    // Duplo clique no card abre a edição.
+    $('quadro').addEventListener('dblclick', (evento) => {
+      const card = evento.target.closest('.card');
+      if (card && !evento.target.closest('button')) abrirFormularioMateria(card.dataset.id);
+    });
+
+    // Teclado: Enter edita e Delete exclui o card em foco.
+    $('quadro').addEventListener('keydown', (evento) => {
+      const card = evento.target.closest('.card');
+      if (!card || evento.target !== card) return;
+      if (evento.key !== 'Enter' && evento.key !== 'Delete') return;
+      // Impede que o Enter "vaze" para o formulário recém-aberto e o envie.
+      evento.preventDefault();
+      if (evento.key === 'Enter') abrirFormularioMateria(card.dataset.id);
+      else excluirMateria(card.dataset.id);
     });
   }
 

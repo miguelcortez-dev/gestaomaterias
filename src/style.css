@@ -477,3 +477,23 @@ input:focus, select:focus {
 
 .obrigatorio { color: var(--cor-perigo); }
 .espaco { flex: 1; }
+
+/* Ações do card (editar/excluir): aparecem ao passar o mouse ou com foco */
+.card-acoes {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: flex;
+  gap: 2px;
+  padding: 1px;
+  border-radius: 7px;
+  background: var(--cor-superficie);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.card:hover .card-acoes,
+.card:focus-within .card-acoes { opacity: 1; }
+
+.btn-texto-perigo { color: var(--cor-perigo); }
+.btn-texto-perigo:hover { background: #fdecec; color: var(--cor-perigo); }
