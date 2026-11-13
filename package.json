@@ -8,9 +8,34 @@
   "author": "miguelcortez-dev",
   "license": "UNLICENSED",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "dev.miguelcortez.gestaomaterias",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gestão de Matérias",
+      "artifactName": "gestao-materias-setup-${version}.${ext}"
+    }
   },
   "devDependencies": {
-    "electron": "45.3.1"
+    "electron": "45.3.1",
+    "electron-builder": "26.18.0"
   }
 }
