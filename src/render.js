@@ -267,9 +267,12 @@
     }, [cabecalho, corpo]);
   }
 
-  /** Card de uma matéria: código, nome e carga horária. */
+  /** Classe CSS do status (ex.: "Aprovada" → "status-aprovada"). */
+  const classeStatus = (status) => 'status-' + status.toLowerCase();
+
+  /** Card de uma matéria: código, nome, carga horária e status. */
   function renderizarCard(materia) {
-    const detalhes = [];
+    const detalhes = [el('span', { class: `selo-status ${classeStatus(materia.status)}` }, materia.status)];
     if (materia.cargaHoraria !== null) detalhes.push(el('span', { class: 'card-ch' }, `${materia.cargaHoraria} h`));
 
     const acoes = el('div', { class: 'card-acoes' }, [
@@ -284,7 +287,7 @@
     ]);
 
     return el('article', {
-      class: 'card',
+      class: `card ${classeStatus(materia.status)}`,
       tabindex: '0',
       'aria-label': materia.nome,
       title: 'Arraste para outro período ou clique duas vezes para editar',
@@ -294,7 +297,7 @@
       acoes,
       materia.codigo ? el('div', { class: 'card-codigo' }, materia.codigo) : null,
       el('div', { class: 'card-nome' }, materia.nome),
-      detalhes.length ? el('div', { class: 'card-rodape' }, detalhes) : null,
+      el('div', { class: 'card-rodape' }, detalhes),
       // Ponto de conexão: arrastar daqui até outro card cria a ligação.
       el('span', {
         class: 'conector',

@@ -232,6 +232,8 @@
     $('materia-codigo').value = materia ? materia.codigo : '';
     $('materia-ch').value = materia && materia.cargaHoraria !== null ? materia.cargaHoraria : '';
     preencherPeriodos($('materia-periodo'), dados, materia ? materia.periodoId : periodoId || dados.periodos[0].id);
+    $('materia-status').replaceChildren(...Modelo.STATUS.map((s) => el('option', { value: s }, s)));
+    $('materia-status').value = materia ? materia.status : Modelo.STATUS[0];
     preencherPreRequisitos(dados, materia);
     $('materia-erro').hidden = true;
     $('materia-excluir').hidden = !materia;
@@ -283,6 +285,7 @@
         codigo: $('materia-codigo').value.trim(),
         cargaHoraria,
         periodoId: $('materia-periodo').value,
+        status: $('materia-status').value,
         preRequisitos,
       },
     };

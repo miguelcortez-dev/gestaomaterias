@@ -13,8 +13,9 @@
  *     codigo: string,          // opcional ('' quando vazio)
  *     cargaHoraria: number|null,
  *     periodoId,               // período em que será cursada
- *     preRequisitos: [id]      // matérias que precisam ser cursadas antes
- *   }]                       // a ordem do array define a ordem dos cards em cada coluna
+ *     preRequisitos: [id],     // matérias que precisam ser cursadas antes
+ *     status                   // um de STATUS
+ *   }]                     // a ordem do array define a ordem dos cards em cada coluna
  * }
  */
 (function (raiz, fabrica) {
@@ -30,6 +31,8 @@
   const LIMITE_NOME = 120;
   const LIMITE_CODIGO = 20;
   const LIMITE_CARGA_HORARIA = 2000;
+  const STATUS = ['Pendente', 'Cursando', 'Aprovada', 'Reprovada'];
+  const STATUS_PADRAO = 'Pendente';
 
   /** Gera um identificador único curto (ex.: "p-lk2j3h-8f2a1c"). */
   function gerarId(prefixo) {
@@ -57,6 +60,7 @@
       cargaHoraria: null,
       periodoId: null,
       preRequisitos: [],
+      status: STATUS_PADRAO,
       ...campos,
     };
   }
@@ -76,6 +80,7 @@
       preRequisitos: m.preRequisitos === undefined
         ? []
         : Array.isArray(m.preRequisitos) ? [...new Set(m.preRequisitos)] : m.preRequisitos,
+      status: m.status === undefined ? STATUS_PADRAO : m.status,
     };
   }
 
@@ -151,6 +156,7 @@
         erro(`${ref}: a carga horária deve ser um número inteiro entre 0 e ${LIMITE_CARGA_HORARIA}.`);
       }
       if (!idsPeriodos.has(m.periodoId)) erro(`${ref}: período inexistente.`);
+      if (!STATUS.includes(m.status)) erro(`${ref}: status inválido.`);
     });
 
     // Pré-requisitos: devem apontar para matérias existentes e não formar ciclos.
@@ -289,6 +295,7 @@
     LIMITE_NOME,
     LIMITE_CODIGO,
     LIMITE_CARGA_HORARIA,
+    STATUS,
     gerarId,
     criarDadosPadrao,
     criarMateria,
