@@ -453,3 +453,15 @@ if (!app.requestSingleInstanceLock()) {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+// Antes de encerrar, espera terminar qualquer gravação em andamento para que
+// a última alteração feita pouco antes de fechar não se perca.
+let gravacaoConcluidaAoSair = false;
+app.on('before-quit', (evento) => {
+  if (gravacaoConcluidaAoSair) return;
+  evento.preventDefault();
+  filaDeGravacao.finally(() => {
+    gravacaoConcluidaAoSair = true;
+    app.quit();
+  });
+});
