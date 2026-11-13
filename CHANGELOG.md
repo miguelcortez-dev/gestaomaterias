@@ -7,6 +7,8 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.5.0] - 2026-11-12
+
 ### Adicionado
 
 - Status das matérias ("Pendente", "Cursando", "Aprovada" e "Reprovada"), com
