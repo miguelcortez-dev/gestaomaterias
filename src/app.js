@@ -131,6 +131,112 @@
     });
   }
 
+  /* ------------------------------------------------------------------ *
+   * Matérias: formulário de cadastro/edição
+   * ------------------------------------------------------------------ */
+
+  /** Id da matéria aberta no formulário (null = nova matéria). */
+  let materiaEmEdicao = null;
+
+  /** Preenche um <select> com os períodos existentes. */
+  function preencherPeriodos(select, dados, selecionado) {
+    select.replaceChildren(
+      ...dados.periodos.map((p, i) =>
+        el('option', { value: p.id }, Modelo.rotuloPeriodo(i) + (i >= dados.periodosBase ? ' (extra)' : ''))),
+    );
+    select.value = selecionado;
+  }
+
+  /**
+   * Abre o formulário.
+   * @param {string|null} id         matéria a editar, ou null para criar
+   * @param {string|null} periodoId  período sugerido para uma matéria nova
+   */
+  function abrirFormularioMateria(id = null, periodoId = null) {
+    const dados = App.estado.obter();
+    if (!dados.configurado) return;
+    const materia = id ? dados.materias.find((m) => m.id === id) : null;
+    if (id && !materia) return;
+
+    materiaEmEdicao = materia ? materia.id : null;
+    $('materia-titulo').textContent = materia ? 'Editar matéria' : 'Nova matéria';
+    $('materia-nome').value = materia ? materia.nome : '';
+    $('materia-codigo').value = materia ? materia.codigo : '';
+    $('materia-ch').value = materia && materia.cargaHoraria !== null ? materia.cargaHoraria : '';
+    preencherPeriodos($('materia-periodo'), dados, materia ? materia.periodoId : periodoId || dados.periodos[0].id);
+    $('materia-erro').hidden = true;
+
+    $('dlg-materia').showModal();
+    $('materia-nome').focus();
+  }
+
+  function mostrarErroMateria(mensagem, campo) {
+    $('materia-erro').textContent = mensagem;
+    $('materia-erro').hidden = false;
+    if (campo) $(campo).focus();
+  }
+
+  /** Lê e valida os campos do formulário. */
+  function lerFormularioMateria() {
+    const nome = $('materia-nome').value.trim();
+    if (!nome) return { erro: 'Informe o nome da matéria.', campo: 'materia-nome' };
+
+    const campoCh = $('materia-ch');
+    let cargaHoraria = null;
+    if (campoCh.validity.badInput || campoCh.value.trim() !== '') {
+      const numero = Number(campoCh.value);
+      if (campoCh.validity.badInput || !Number.isInteger(numero) || numero < 0 || numero > Modelo.LIMITE_CARGA_HORARIA) {
+        return {
+          erro: `A carga horária deve ser um número inteiro de horas, entre 0 e ${Modelo.LIMITE_CARGA_HORARIA}.`,
+          campo: 'materia-ch',
+        };
+      }
+      cargaHoraria = numero;
+    }
+
+    return {
+      valores: {
+        nome,
+        codigo: $('materia-codigo').value.trim(),
+        cargaHoraria,
+        periodoId: $('materia-periodo').value,
+      },
+    };
+  }
+
+  function salvarMateria(evento) {
+    evento.preventDefault();
+    const { erro, campo, valores } = lerFormularioMateria();
+    if (erro) {
+      mostrarErroMateria(erro, campo);
+      return;
+    }
+
+    let aplicado;
+    if (materiaEmEdicao) {
+      const id = materiaEmEdicao;
+      aplicado = App.estado.alterar('Editar matéria', (rascunho) => {
+        Object.assign(rascunho.materias.find((m) => m.id === id), valores);
+      });
+    } else {
+      aplicado = App.estado.alterar('Adicionar matéria', (rascunho) => {
+        rascunho.materias.push(Modelo.criarMateria(valores));
+      });
+    }
+    // Editar sem mudar nada também fecha o formulário.
+    if (aplicado || materiaEmEdicao) $('dlg-materia').close();
+  }
+
+  function ligarFormularioMateria() {
+    $('btn-nova-materia').addEventListener('click', () => abrirFormularioMateria());
+    $('form-materia').addEventListener('submit', salvarMateria);
+    $('materia-cancelar').addEventListener('click', () => $('dlg-materia').close());
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Quadro: cliques e atalhos de teclado
+   * ------------------------------------------------------------------ */
+
   /** Cliques no quadro são tratados por delegação, via atributos data-acao. */
   function ligarQuadro() {
     $('quadro').addEventListener('click', (evento) => {
@@ -139,6 +245,21 @@
       const { acao, periodoId } = alvo.dataset;
       if (acao === 'adicionar-periodo') adicionarPeriodo();
       else if (acao === 'remover-periodo') removerPeriodo(periodoId);
+      else if (acao === 'nova-materia') abrirFormularioMateria(null, periodoId);
+    });
+  }
+
+  /** Há algum diálogo aberto? (atalhos globais ficam desativados) */
+  const dialogoAberto = () => !!document.querySelector('dialog[open]');
+
+  function ligarAtalhos() {
+    document.addEventListener('keydown', (evento) => {
+      if (dialogoAberto()) return;
+      const ctrl = evento.ctrlKey || evento.metaKey;
+      if (ctrl && !evento.shiftKey && evento.key.toLowerCase() === 'n') {
+        evento.preventDefault();
+        abrirFormularioMateria();
+      }
     });
   }
 
@@ -167,6 +288,8 @@
     }
     ligarConfiguracao();
     ligarQuadro();
+    ligarFormularioMateria();
+    ligarAtalhos();
     App.estado.aoAlterar(App.render.renderizar);
     App.estado.iniciar(resposta.dados);
     if (resposta.aviso) toast(resposta.aviso, 'aviso', 10000);
