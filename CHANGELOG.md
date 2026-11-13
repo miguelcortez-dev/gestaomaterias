@@ -7,6 +7,8 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.6.0] - 2026-11-12
+
 ### Adicionado
 
 - Painel de resumo acima do fluxograma: total de matérias, aprovadas (com
