@@ -734,7 +734,10 @@
     });
     if (!confirmado) return;
 
-    App.estado.alterar('Importar dados', () => resposta.dados);
+    if (!App.estado.alterar('Importar dados', () => resposta.dados)) {
+      toast('O arquivo contém os mesmos dados atuais; nada foi alterado.');
+      return;
+    }
     toast('Dados importados com sucesso.', 'sucesso');
     if (!App.estado.obter().configurado) abrirConfiguracao();
   }

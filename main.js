@@ -31,9 +31,14 @@ function caminhoDados() {
 }
 
 /** Lê, normaliza e valida um arquivo de dados. Lança erro se for inválido. */
-async function lerArquivoDeDados(caminho) {
+async function lerArquivoDeDados(caminho, { exigirEstrutura = false } = {}) {
   const texto = await fsp.readFile(caminho, 'utf8');
-  const dados = Modelo.normalizarDados(JSON.parse(texto));
+  const bruto = JSON.parse(texto);
+  // Na importação, um JSON qualquer não pode virar um curso vazio "válido".
+  if (exigirEstrutura && !(bruto && Array.isArray(bruto.periodos) && Array.isArray(bruto.materias))) {
+    throw new Error('O arquivo não parece conter dados exportados pelo Gestão de Matérias.');
+  }
+  const dados = Modelo.normalizarDados(bruto);
   const validacao = Modelo.validarDados(dados);
   if (!validacao.ok) throw new Error(validacao.erros.join(' '));
   return dados;
@@ -219,7 +224,7 @@ async function importarDados() {
   try {
     const { size } = await fsp.stat(caminho);
     if (size > TAMANHO_MAXIMO_IMPORTACAO) throw new Error('O arquivo é grande demais (máximo de 5 MB).');
-    return { ok: true, dados: await lerArquivoDeDados(caminho), caminho };
+    return { ok: true, dados: await lerArquivoDeDados(caminho, { exigirEstrutura: true }), caminho };
   } catch (erro) {
     const mensagem = erro instanceof SyntaxError ? 'O arquivo não contém um JSON válido.' : erro.message;
     return { ok: false, erro: mensagem };
