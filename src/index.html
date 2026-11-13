@@ -16,10 +16,15 @@
       </div>
     </header>
 
-    <main id="quadro" class="quadro">
-      <div class="vazio">
-        <p class="vazio-titulo">Seu fluxograma aparecerá aqui.</p>
-      </div>
-    </main>
+    <main id="quadro" class="quadro"></main>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <!-- Ordem importa: modelo → utilitários → IPC → estado → app -->
+    <script src="modelo.js"></script>
+    <script src="ui.js"></script>
+    <script src="ipc.js"></script>
+    <script src="estado.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

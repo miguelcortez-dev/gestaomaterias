@@ -5,18 +5,161 @@
  * Responsabilidades:
  *  - criar a janela principal (instância única, lembrando tamanho e posição);
  *  - montar o menu em português;
- *  - aplicar as regras de segurança (sem navegação externa, sem permissões).
+ *  - aplicar as regras de segurança (sem navegação externa, sem permissões);
+ *  - ler e gravar os dados do curso em disco, atendendo à interface via IPC.
  */
-const { app, BrowserWindow, Menu, screen, session } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, screen, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const fsp = fs.promises;
+const Modelo = require('./src/modelo.js');
 
+const ARQUIVO_DADOS = 'curso.json';
 const ARQUIVO_JANELA = 'janela.json';
 const TAMANHO_PADRAO = { width: 1280, height: 800 };
 const TAMANHO_MINIMO = { width: 960, height: 600 };
 
 /** Janela principal (única) do aplicativo. */
 let janelaPrincipal = null;
+
+/* ------------------------------------------------------------------ *
+ * Persistência dos dados (curso.json na pasta de dados do usuário)
+ * ------------------------------------------------------------------ */
+
+function caminhoDados() {
+  return path.join(app.getPath('userData'), ARQUIVO_DADOS);
+}
+
+/** Lê, normaliza e valida um arquivo de dados. Lança erro se for inválido. */
+async function lerArquivoDeDados(caminho) {
+  const texto = await fsp.readFile(caminho, 'utf8');
+  const dados = Modelo.normalizarDados(JSON.parse(texto));
+  const validacao = Modelo.validarDados(dados);
+  if (!validacao.ok) throw new Error(validacao.erros.join(' '));
+  return dados;
+}
+
+/** No Windows, antivírus/indexadores podem travar o arquivo por instantes. */
+async function renomearComRetentativa(origem, destino) {
+  for (let tentativa = 0; ; tentativa++) {
+    try {
+      await fsp.rename(origem, destino);
+      return;
+    } catch (erro) {
+      if (tentativa >= 5 || !['EPERM', 'EACCES', 'EBUSY'].includes(erro.code)) throw erro;
+      await new Promise((resolver) => setTimeout(resolver, 50 * (tentativa + 1)));
+    }
+  }
+}
+
+/**
+ * Gravação atômica: valida, escreve em um arquivo temporário, guarda a versão
+ * anterior em curso.json.bak e só então substitui o arquivo principal por
+ * renomeação. Uma queda no meio do processo nunca deixa o curso.json pela metade.
+ */
+async function gravarAtomico(dados) {
+  const validacao = Modelo.validarDados(dados);
+  if (!validacao.ok) throw new Error('Dados inválidos: ' + validacao.erros.join(' '));
+
+  const texto = JSON.stringify(dados, null, 2);
+  JSON.parse(texto); // confirma que o conteúdo serializado é um JSON válido
+
+  const destino = caminhoDados();
+  const temporario = `${destino}.tmp`;
+  await fsp.mkdir(path.dirname(destino), { recursive: true });
+
+  const arquivo = await fsp.open(temporario, 'w');
+  try {
+    await arquivo.writeFile(texto, 'utf8');
+    await arquivo.sync(); // garante que os bytes chegaram ao disco
+  } finally {
+    await arquivo.close();
+  }
+
+  try {
+    await fsp.copyFile(destino, `${destino}.bak`);
+  } catch (erro) {
+    if (erro.code !== 'ENOENT') throw erro; // primeira gravação: ainda não há o que copiar
+  }
+  await renomearComRetentativa(temporario, destino);
+}
+
+// Fila de gravação: garante que gravações simultâneas aconteçam em ordem.
+let filaDeGravacao = Promise.resolve();
+function salvarDados(dados) {
+  const tarefa = filaDeGravacao.then(() => gravarAtomico(dados));
+  filaDeGravacao = tarefa.catch(() => {});
+  return tarefa;
+}
+
+/**
+ * Carrega os dados. Na primeira execução cria o arquivo; se ele estiver
+ * corrompido, preserva uma cópia e tenta restaurar a partir do .bak.
+ */
+async function carregarDados() {
+  const arquivo = caminhoDados();
+  try {
+    return { dados: await lerArquivoDeDados(arquivo) };
+  } catch (erro) {
+    if (erro.code === 'ENOENT') {
+      const dados = Modelo.criarDadosPadrao();
+      await salvarDados(dados);
+      return { dados, primeiraExecucao: true };
+    }
+
+    console.error('Arquivo de dados inválido:', erro.message);
+    const preservado = `${arquivo}.corrompido-${Date.now()}`;
+    await fsp.rename(arquivo, preservado).catch(() => {});
+
+    try {
+      const dados = await lerArquivoDeDados(`${arquivo}.bak`);
+      await salvarDados(dados);
+      return {
+        dados,
+        aviso: 'O arquivo de dados estava danificado e foi restaurado a partir da cópia de segurança.',
+      };
+    } catch {
+      const dados = Modelo.criarDadosPadrao();
+      await salvarDados(dados);
+      return {
+        dados,
+        aviso: `Não foi possível ler os dados salvos. Uma cópia do arquivo danificado foi guardada em: ${preservado}`,
+      };
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * IPC (comunicação com a interface)
+ * ------------------------------------------------------------------ */
+
+/** Aceita mensagens apenas do quadro principal da nossa própria janela. */
+function validarRemetente(evento) {
+  const quadro = evento.senderFrame;
+  const valido = janelaPrincipal &&
+    evento.sender === janelaPrincipal.webContents &&
+    quadro && quadro.parent === null &&
+    quadro.url.startsWith('file:');
+  if (!valido) throw new Error('Remetente não autorizado.');
+}
+
+function registrarIpc() {
+  ipcMain.handle('dados:carregar', async (evento) => {
+    validarRemetente(evento);
+    return carregarDados();
+  });
+
+  ipcMain.handle('dados:salvar', async (evento, dados) => {
+    validarRemetente(evento);
+    try {
+      await salvarDados(dados);
+      return { ok: true };
+    } catch (erro) {
+      console.error('Falha ao salvar:', erro);
+      return { ok: false, erro: erro.message };
+    }
+  });
+}
 
 /* ------------------------------------------------------------------ *
  * Janela principal
@@ -82,6 +225,7 @@ function criarJanela() {
     title: 'Gestão de Matérias',
     webPreferences: {
       // O front-end não tem acesso ao Node.js; tudo passa pelo preload (contextBridge).
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -208,6 +352,7 @@ app.on('web-contents-created', (_evento, conteudo) => {
 
 function iniciar() {
   aplicarSeguranca();
+  registrarIpc();
   montarMenu();
   criarJanela();
 
