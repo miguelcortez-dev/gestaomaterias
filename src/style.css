@@ -404,6 +404,7 @@ input:focus, select:focus {
 /* ---------- Cards de matéria ---------- */
 .card {
   position: relative;
+  z-index: 2;
   padding: 9px 12px 10px 13px;
   border: 1px solid #dce2eb;
   border-left: 4px solid #94a3b8;
@@ -579,3 +580,31 @@ dialog.dialogo { overflow: auto; }
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* ---------- Setas de dependência (SVG) ---------- */
+:root {
+  --cor-seta: #8792a6;
+  --cor-seta-destaque: var(--cor-primaria);
+}
+
+/* Camadas: fundo das colunas → setas (z 1) → cards (z 2). */
+.setas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none; /* só as próprias setas recebem cliques */
+}
+
+.seta-linha {
+  fill: none;
+  stroke: var(--cor-seta);
+  stroke-width: 1.8;
+  marker-end: url(#ponta);
+  transition: stroke 0.12s, opacity 0.15s;
+}
+
+.ponta { fill: var(--cor-seta); }
+.ponta.destaque { fill: var(--cor-seta-destaque); }
+.ponta.alerta { fill: var(--cor-aviso); }

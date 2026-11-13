@@ -523,6 +523,16 @@
     ligarFormularioMateria();
     ligarArrastarCards();
     ligarAtalhos();
+
+    // As setas dependem da posição dos cards: redesenha quando o layout muda
+    // (janela redimensionada, zoom, fontes carregadas...).
+    let quadroPendente = 0;
+    const agendarSetas = () => {
+      cancelAnimationFrame(quadroPendente);
+      quadroPendente = requestAnimationFrame(App.render.desenharSetas);
+    };
+    window.addEventListener('resize', agendarSetas);
+    new ResizeObserver(agendarSetas).observe($('quadro'));
     App.estado.aoAlterar(App.render.renderizar);
     App.estado.iniciar(resposta.dados);
     if (resposta.aviso) toast(resposta.aviso, 'aviso', 10000);
