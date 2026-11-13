@@ -2,9 +2,12 @@
 /**
  * Processo principal do Electron.
  *
- * Responsável por criar a janela do aplicativo e controlar o seu ciclo de vida.
+ * Responsabilidades:
+ *  - criar a janela principal (instância única);
+ *  - montar o menu em português;
+ *  - aplicar as regras de segurança (sem navegação externa, sem permissões).
  */
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, Menu, session } = require('electron');
 const path = require('node:path');
 
 const TAMANHO_PADRAO = { width: 1280, height: 800 };
@@ -44,6 +47,68 @@ function criarJanela() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Menu
+ * ------------------------------------------------------------------ */
+
+function montarMenu() {
+  const ehMac = process.platform === 'darwin';
+  const modelo = [];
+
+  if (ehMac) {
+    modelo.push({
+      label: app.name,
+      submenu: [
+        { role: 'about', label: `Sobre ${app.name}` },
+        { type: 'separator' },
+        { role: 'hide', label: `Ocultar ${app.name}` },
+        { role: 'hideOthers', label: 'Ocultar outros' },
+        { role: 'unhide', label: 'Mostrar tudo' },
+        { type: 'separator' },
+        { role: 'quit', label: `Encerrar ${app.name}` },
+      ],
+    });
+  }
+
+  modelo.push({
+    label: 'Arquivo',
+    submenu: [{ role: 'quit', label: 'Sair' }],
+  });
+
+  // Necessário para copiar/colar nos campos de texto (principalmente no macOS).
+  modelo.push({
+    label: 'Editar',
+    submenu: [
+      { role: 'cut', label: 'Recortar' },
+      { role: 'copy', label: 'Copiar' },
+      { role: 'paste', label: 'Colar' },
+      { role: 'selectAll', label: 'Selecionar tudo' },
+    ],
+  });
+
+  const itensExibir = [
+    {
+      label: 'Zoom',
+      submenu: [
+        { role: 'zoomIn', label: 'Aumentar', accelerator: 'CmdOrCtrl+=' },
+        { role: 'zoomOut', label: 'Diminuir' },
+        { role: 'resetZoom', label: 'Tamanho original' },
+      ],
+    },
+    { role: 'togglefullscreen', label: 'Tela cheia' },
+  ];
+  if (!app.isPackaged) {
+    itensExibir.push(
+      { type: 'separator' },
+      { role: 'reload', label: 'Recarregar' },
+      { role: 'toggleDevTools', label: 'Ferramentas do desenvolvedor' },
+    );
+  }
+  modelo.push({ label: 'Exibir', submenu: itensExibir });
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(modelo));
+}
+
+/* ------------------------------------------------------------------ *
  * Segurança
  * ------------------------------------------------------------------ */
 
@@ -73,15 +138,29 @@ app.on('web-contents-created', (_evento, conteudo) => {
  * Ciclo de vida do aplicativo
  * ------------------------------------------------------------------ */
 
-app.whenReady().then(() => {
+function iniciar() {
   aplicarSeguranca();
+  montarMenu();
   criarJanela();
 
   // macOS: recria a janela ao clicar no ícone do Dock se não houver nenhuma aberta.
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) criarJanela();
   });
-});
+}
+
+// Instância única: se o app for aberto de novo, apenas foca a janela existente.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!janelaPrincipal) return;
+    if (janelaPrincipal.isMinimized()) janelaPrincipal.restore();
+    janelaPrincipal.show();
+    janelaPrincipal.focus();
+  });
+  app.whenReady().then(iniciar);
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
