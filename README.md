@@ -7,6 +7,13 @@ seu computador.
 
 > Projeto em desenvolvimento. Consulte o [CHANGELOG](CHANGELOG.md) para ver o que já está disponível.
 
+## Instalação (Windows)
+
+Baixe o instalador `gestao-materias-setup-<versão>.exe` na página de
+[releases](https://github.com/miguelcortez-dev/gestaomaterias/releases/latest)
+e execute. O Windows pode exibir um aviso do SmartScreen, porque o instalador
+não é assinado digitalmente: clique em **Mais informações › Executar assim mesmo**.
+
 ## Requisitos (desenvolvimento)
 
 - [Node.js](https://nodejs.org/) 20 ou superior (inclui o npm).

@@ -7,6 +7,18 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.6.1] - 2026-11-13
+
+### Adicionado
+
+- Instalador para Windows (NSIS), gerado com `npm run dist` e publicado nas
+  releases do GitHub.
+
+### Corrigido
+
+- Ao fechar o aplicativo, a gravação em andamento é concluída antes de
+  encerrar, para que a última alteração não se perca.
+
 ## [0.6.0] - 2026-11-12
 
 ### Adicionado
