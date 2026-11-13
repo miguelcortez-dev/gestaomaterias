@@ -232,9 +232,19 @@
     $('materia-codigo').value = materia ? materia.codigo : '';
     $('materia-ch').value = materia && materia.cargaHoraria !== null ? materia.cargaHoraria : '';
     preencherPeriodos($('materia-periodo'), dados, materia ? materia.periodoId : periodoId || dados.periodos[0].id);
+    $('materia-status').replaceChildren(...Modelo.STATUS.map((s) => el('option', { value: s }, s)));
+    $('materia-status').value = materia ? materia.status : Modelo.STATUS[0];
     preencherPreRequisitos(dados, materia);
     $('materia-erro').hidden = true;
     $('materia-excluir').hidden = !materia;
+
+    // Histórico de tentativas (somente leitura).
+    const historico = materia ? materia.historico : [];
+    $('materia-historico').hidden = !historico.length;
+    $('materia-historico').replaceChildren(
+      el('span', { class: 'campo-rotulo' }, `Histórico de tentativas (atual: ${materia ? materia.tentativas : 1}ª)`),
+      el('ul', {}, historico.map((registro) => el('li', {}, App.render.descreverReprovacao(registro)))),
+    );
 
     $('dlg-materia').showModal();
     $('materia-nome').focus();
@@ -283,6 +293,7 @@
         codigo: $('materia-codigo').value.trim(),
         cargaHoraria,
         periodoId: $('materia-periodo').value,
+        status: $('materia-status').value,
         preRequisitos,
       },
     };
@@ -297,18 +308,107 @@
     }
 
     let aplicado;
-    if (materiaEmEdicao) {
-      const id = materiaEmEdicao;
+    let id = materiaEmEdicao;
+    let statusAnterior = null;
+    if (id) {
+      statusAnterior = App.estado.obter().materias.find((m) => m.id === id).status;
       aplicado = App.estado.alterar('Editar matéria', (rascunho) => {
         Object.assign(rascunho.materias.find((m) => m.id === id), valores);
       });
     } else {
+      const nova = Modelo.criarMateria(valores);
+      id = nova.id;
       aplicado = App.estado.alterar('Adicionar matéria', (rascunho) => {
-        rascunho.materias.push(Modelo.criarMateria(valores));
+        rascunho.materias.push(nova);
       });
     }
     // Editar sem mudar nada também fecha o formulário.
-    if (aplicado || materiaEmEdicao) $('dlg-materia').close();
+    if (!aplicado && !materiaEmEdicao) return;
+    $('dlg-materia').close();
+
+    if (aplicado && valores.status === 'Reprovada' && statusAnterior !== 'Reprovada') oferecerRecolocacao(id);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Reprovação: recolocar a matéria em um período posterior
+   * ------------------------------------------------------------------ */
+
+  const NOVO_PERIODO = '__novo__';
+  /** Matéria aguardando a decisão no diálogo de reprovação. */
+  let materiaReprovada = null;
+
+  /** Data local de hoje no formato AAAA-MM-DD. */
+  function hojeIso() {
+    const hoje = new Date();
+    const doisDigitos = (n) => String(n).padStart(2, '0');
+    return `${hoje.getFullYear()}-${doisDigitos(hoje.getMonth() + 1)}-${doisDigitos(hoje.getDate())}`;
+  }
+
+  /** Pergunta se a matéria reprovada deve ir para um período posterior. */
+  function oferecerRecolocacao(id) {
+    const dados = App.estado.obter();
+    const materia = dados.materias.find((m) => m.id === id);
+    if (!materia) return;
+    const indiceAtual = dados.periodos.findIndex((p) => p.id === materia.periodoId);
+
+    const opcoes = dados.periodos.slice(indiceAtual + 1).map((p, i) => {
+      const indice = indiceAtual + 1 + i;
+      return el('option', { value: p.id }, Modelo.rotuloPeriodo(indice) + (indice >= dados.periodosBase ? ' (extra)' : ''));
+    });
+    if (dados.periodos.length < Modelo.LIMITE_PERIODOS) {
+      opcoes.push(el('option', { value: NOVO_PERIODO }, `Novo período extra (${Modelo.rotuloPeriodo(dados.periodos.length)})`));
+    }
+    if (!opcoes.length) {
+      toast('Não há períodos posteriores disponíveis para recolocar a matéria.', 'aviso');
+      return;
+    }
+
+    materiaReprovada = id;
+    $('reprovacao-mensagem').textContent =
+      `"${materia.nome}" foi marcada como reprovada no ${Modelo.rotuloPeriodo(indiceAtual)}. ` +
+      'Deseja recolocá-la em um período posterior para cursar novamente?';
+    $('reprovacao-periodo').replaceChildren(...opcoes);
+    $('reprovacao-periodo').selectedIndex = 0;
+    $('dlg-reprovacao').showModal();
+  }
+
+  /** Registra a reprovação no histórico e move a matéria (criando um período extra se pedido). */
+  function recolocarMateria(id, destino) {
+    let novoPeriodoId = destino;
+    const aplicado = App.estado.alterar('Recolocar matéria reprovada', (rascunho) => {
+      const materia = rascunho.materias.find((m) => m.id === id);
+      if (!materia) return false;
+      if (destino === NOVO_PERIODO) {
+        const periodo = { id: Modelo.gerarId('p') };
+        rascunho.periodos.push(periodo);
+        novoPeriodoId = periodo.id;
+      }
+      const indiceAtual = rascunho.periodos.findIndex((p) => p.id === materia.periodoId);
+      materia.historico.push({ periodo: indiceAtual + 1, data: hojeIso() });
+      materia.tentativas += 1;
+      materia.status = 'Pendente';
+      materia.periodoId = novoPeriodoId;
+    });
+    if (!aplicado) return;
+
+    const dados = App.estado.obter();
+    const materia = dados.materias.find((m) => m.id === id);
+    const indice = dados.periodos.findIndex((p) => p.id === novoPeriodoId);
+    toast(`"${materia.nome}" foi recolocada no ${Modelo.rotuloPeriodo(indice)} (${materia.tentativas}ª tentativa).`, 'sucesso');
+  }
+
+  function ligarReprovacao() {
+    $('form-reprovacao').addEventListener('submit', (evento) => {
+      evento.preventDefault();
+      const id = materiaReprovada;
+      const destino = $('reprovacao-periodo').value;
+      $('dlg-reprovacao').close();
+      recolocarMateria(id, destino);
+    });
+    $('reprovacao-manter').addEventListener('click', () => $('dlg-reprovacao').close());
+    $('dlg-reprovacao').addEventListener('close', () => {
+      materiaReprovada = null;
+    });
   }
 
   /**
@@ -608,6 +708,36 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Avisos de validação (não bloqueiam a ação)
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Após cada alteração, avisa se surgiu alguma matéria no mesmo período ou
+   * antes de um de seus pré-requisitos. O card e a seta já ficam destacados;
+   * o aviso só chama a atenção para o que acabou de acontecer.
+   */
+  function ligarAvisos() {
+    let conflitosAnteriores = null; // null = primeira carga, não avisa
+    App.estado.aoAlterar((dados) => {
+      const atuais = Modelo.conflitosDePeriodo(dados);
+      const chave = (c) => `${c.requisito}>${c.materia}`;
+      if (conflitosAnteriores) {
+        const novos = atuais.filter((c) => !conflitosAnteriores.has(chave(c)));
+        if (novos.length) {
+          const { requisito, materia } = novos[0];
+          toast(
+            `Atenção: "${nomeMateria(materia)}" está no mesmo período ou antes do seu pré-requisito "${nomeMateria(requisito)}".` +
+              (novos.length > 1 ? ` (e mais ${novos.length - 1})` : ''),
+            'aviso',
+            6000,
+          );
+        }
+      }
+      conflitosAnteriores = new Set(atuais.map(chave));
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Quadro: cliques e atalhos de teclado
    * ------------------------------------------------------------------ */
 
@@ -690,9 +820,11 @@
     ligarConfiguracao();
     ligarQuadro();
     ligarFormularioMateria();
+    ligarReprovacao();
     ligarArrastarCards();
     ligarConexoes();
     ligarDestaque();
+    ligarAvisos();
     ligarAtalhos();
 
     // As setas dependem da posição dos cards: redesenha quando o layout muda

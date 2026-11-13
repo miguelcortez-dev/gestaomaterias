@@ -727,3 +727,80 @@ dialog.dialogo { overflow: auto; }
 
 .legenda-item.exige::before { background: var(--cor-exige); }
 .legenda-item.libera::before { background: var(--cor-libera); }
+
+/* ---------- Status das matérias ---------- */
+:root {
+  --status-pendente: #64748b;
+  --status-pendente-fundo: #eef1f5;
+  --status-cursando: #1d5fd6;
+  --status-cursando-fundo: #e2ecfd;
+  --status-aprovada: #12813d;
+  --status-aprovada-fundo: #dcf5e4;
+  --status-reprovada: #c42b2b;
+  --status-reprovada-fundo: #fde4e4;
+}
+
+.card.status-pendente { border-left-color: var(--status-pendente); }
+.card.status-cursando { border-left-color: var(--status-cursando); }
+.card.status-aprovada { border-left-color: var(--status-aprovada); }
+.card.status-reprovada { border-left-color: var(--status-reprovada); }
+
+.selo-status {
+  padding: 1px 8px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.selo-status.status-pendente { background: var(--status-pendente-fundo); color: #475467; }
+.selo-status.status-cursando { background: var(--status-cursando-fundo); color: var(--status-cursando); }
+.selo-status.status-aprovada { background: var(--status-aprovada-fundo); color: var(--status-aprovada); }
+.selo-status.status-reprovada { background: var(--status-reprovada-fundo); color: var(--status-reprovada); }
+
+.card-ch { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ---------- Tentativas e histórico ---------- */
+.selo-tentativa {
+  padding: 1px 7px;
+  border: 1px solid #f1b8b8;
+  border-radius: 99px;
+  color: var(--status-reprovada);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: help;
+}
+
+.historico {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fbf3f3;
+}
+
+.historico ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--cor-texto-suave);
+  font-size: 13px;
+}
+
+/* ---------- Avisos: matéria antes (ou no mesmo período) de um pré-requisito ---------- */
+.card.alerta {
+  background: var(--cor-aviso-fundo);
+  border-top-color: #f3c27a;
+  border-right-color: #f3c27a;
+  border-bottom-color: #f3c27a;
+}
+
+.card-alerta {
+  display: inline-flex;
+  color: var(--cor-aviso);
+  cursor: help;
+}
+
+.seta.alerta .seta-linha {
+  stroke: var(--cor-aviso);
+  stroke-dasharray: 6 4;
+  marker-end: url(#ponta-alerta);
+}
+
+.seta.alerta:hover .seta-linha { stroke: var(--cor-perigo); }

@@ -13,8 +13,11 @@
  *     codigo: string,          // opcional ('' quando vazio)
  *     cargaHoraria: number|null,
  *     periodoId,               // período em que será cursada
- *     preRequisitos: [id]      // matérias que precisam ser cursadas antes
- *   }]                       // a ordem do array define a ordem dos cards em cada coluna
+ *     preRequisitos: [id],     // matérias que precisam ser cursadas antes
+ *     status,                  // um de STATUS
+ *     tentativas: number,      // 1 na primeira vez; +1 a cada recolocação após reprovação
+ *     historico: [{ periodo, data }]  // reprovações anteriores (nº do período, AAAA-MM-DD)
+ *   }]                   // a ordem do array define a ordem dos cards em cada coluna
  * }
  */
 (function (raiz, fabrica) {
@@ -30,6 +33,8 @@
   const LIMITE_NOME = 120;
   const LIMITE_CODIGO = 20;
   const LIMITE_CARGA_HORARIA = 2000;
+  const STATUS = ['Pendente', 'Cursando', 'Aprovada', 'Reprovada'];
+  const STATUS_PADRAO = 'Pendente';
 
   /** Gera um identificador único curto (ex.: "p-lk2j3h-8f2a1c"). */
   function gerarId(prefixo) {
@@ -57,6 +62,9 @@
       cargaHoraria: null,
       periodoId: null,
       preRequisitos: [],
+      status: STATUS_PADRAO,
+      tentativas: 1,
+      historico: [],
       ...campos,
     };
   }
@@ -76,6 +84,11 @@
       preRequisitos: m.preRequisitos === undefined
         ? []
         : Array.isArray(m.preRequisitos) ? [...new Set(m.preRequisitos)] : m.preRequisitos,
+      status: m.status === undefined ? STATUS_PADRAO : m.status,
+      tentativas: m.tentativas === undefined ? 1 : m.tentativas,
+      historico: m.historico === undefined
+        ? []
+        : Array.isArray(m.historico) ? m.historico.map((h) => (ehObjeto(h) ? { periodo: h.periodo, data: h.data } : h)) : m.historico,
     };
   }
 
@@ -151,6 +164,12 @@
         erro(`${ref}: a carga horária deve ser um número inteiro entre 0 e ${LIMITE_CARGA_HORARIA}.`);
       }
       if (!idsPeriodos.has(m.periodoId)) erro(`${ref}: período inexistente.`);
+      if (!STATUS.includes(m.status)) erro(`${ref}: status inválido.`);
+      if (!ehInteiro(m.tentativas, 1, 99)) erro(`${ref}: número de tentativas inválido.`);
+      const historicoValido = Array.isArray(m.historico) && m.historico.every((h) =>
+        ehObjeto(h) && ehInteiro(h.periodo, 1, LIMITE_PERIODOS) &&
+        typeof h.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(h.data));
+      if (!historicoValido) erro(`${ref}: histórico de tentativas inválido.`);
     });
 
     // Pré-requisitos: devem apontar para matérias existentes e não formar ciclos.
@@ -276,6 +295,23 @@
     return materias.some((m) => !cor.has(m.id) && visitar(m.id));
   }
 
+  /**
+   * Ligações em que a matéria está no mesmo período ou antes de um de seus
+   * pré-requisitos (situação permitida, mas que merece aviso).
+   * @returns {{requisito: string, materia: string}[]}
+   */
+  function conflitosDePeriodo(dados) {
+    const indicePeriodo = new Map(dados.periodos.map((p, i) => [p.id, i]));
+    const indiceMateria = new Map(dados.materias.map((m) => [m.id, indicePeriodo.get(m.periodoId)]));
+    const conflitos = [];
+    for (const m of dados.materias) {
+      for (const requisito of m.preRequisitos) {
+        if (indiceMateria.get(m.id) <= indiceMateria.get(requisito)) conflitos.push({ requisito, materia: m.id });
+      }
+    }
+    return conflitos;
+  }
+
   /** Rótulo de exibição de um período a partir do índice (0 → "1º período"). */
   function rotuloPeriodo(indice) {
     return `${indice + 1}º período`;
@@ -289,6 +325,7 @@
     LIMITE_NOME,
     LIMITE_CODIGO,
     LIMITE_CARGA_HORARIA,
+    STATUS,
     gerarId,
     criarDadosPadrao,
     criarMateria,
@@ -298,6 +335,7 @@
     liberadasPor,
     cicloAoLigar,
     temCiclo,
+    conflitosDePeriodo,
     rotuloPeriodo,
   };
 });

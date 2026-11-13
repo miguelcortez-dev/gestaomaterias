@@ -26,7 +26,15 @@
       return;
     }
 
-    const colunas = dados.periodos.map((periodo, indice) => renderizarColuna(dados, periodo, indice));
+    // Matéria → nomes dos pré-requisitos que estão no mesmo período ou depois dela.
+    const nomes = new Map(dados.materias.map((m) => [m.id, m.nome]));
+    const alertas = new Map();
+    for (const { requisito, materia } of Modelo.conflitosDePeriodo(dados)) {
+      if (!alertas.has(materia)) alertas.set(materia, []);
+      alertas.get(materia).push(nomes.get(requisito));
+    }
+
+    const colunas = dados.periodos.map((periodo, indice) => renderizarColuna(dados, periodo, indice, alertas));
     colunas.push(
       el('button', { type: 'button', class: 'coluna-nova', dataset: { acao: 'adicionar-periodo' }, title: 'Adicionar um período extra' }, [
         icone('mais'),
@@ -85,6 +93,24 @@
     return `M ${x1} ${y1} C ${x1 + folga} ${y1}, ${x2 - folga} ${y2}, ${x2} ${y2}`;
   }
 
+  /**
+   * Caminho entre dois cards conforme a posição relativa das colunas:
+   *  - destino à direita: da direita da origem até a esquerda do destino;
+   *  - mesma coluna: laço pelo lado direito dos dois cards;
+   *  - destino à esquerda: da esquerda da origem até a direita do destino.
+   */
+  function caminhoEntreCards(origem, yOrigem, destino, yDestino) {
+    if (destino.esquerda >= origem.direita) {
+      return caminhoCurvo(origem.direita, yOrigem, destino.esquerda - 1, yDestino);
+    }
+    if (Math.abs(destino.esquerda - origem.esquerda) < 2) {
+      const lateral = origem.direita + 28 + Math.min(40, Math.abs(yDestino - yOrigem) / 6);
+      return `M ${origem.direita} ${yOrigem} C ${lateral} ${yOrigem}, ${lateral} ${yDestino}, ${destino.direita + 1} ${yDestino}`;
+    }
+    const folga = Math.max(40, Math.abs(origem.esquerda - destino.direita) / 2);
+    return `M ${origem.esquerda} ${yOrigem} C ${origem.esquerda - folga} ${yOrigem}, ${destino.direita + folga} ${yDestino}, ${destino.direita + 1} ${yDestino}`;
+  }
+
   /** Distribui n pontos de conexão ao longo da altura do card. */
   const pontoNaAltura = (caixa, i, n) => caixa.topo + (caixa.altura * (i + 1)) / (n + 1);
 
@@ -138,17 +164,19 @@
     entradas.forEach((lista) => lista.sort((a, b) => caixas.get(a.de).centro - caixas.get(b.de).centro));
 
     const nomes = new Map(dados.materias.map((m) => [m.id, m.nome]));
+    const conflitos = new Set(Modelo.conflitosDePeriodo(dados).map((c) => `${c.requisito}>${c.materia}`));
     const grupos = ligacoes.map((ligacao) => {
       const origem = caixas.get(ligacao.de);
       const destino = caixas.get(ligacao.para);
       const listaSaida = saidas.get(ligacao.de);
       const listaEntrada = entradas.get(ligacao.para);
-      const d = caminhoCurvo(
-        origem.direita, pontoNaAltura(origem, listaSaida.indexOf(ligacao), listaSaida.length),
-        destino.esquerda - 1, pontoNaAltura(destino, listaEntrada.indexOf(ligacao), listaEntrada.length),
+      const d = caminhoEntreCards(
+        origem, pontoNaAltura(origem, listaSaida.indexOf(ligacao), listaSaida.length),
+        destino, pontoNaAltura(destino, listaEntrada.indexOf(ligacao), listaEntrada.length),
       );
 
-      const grupo = svgEl('g', { class: 'seta' });
+      // Seta de alerta: a matéria está no mesmo período ou antes do pré-requisito.
+      const grupo = svgEl('g', { class: conflitos.has(`${ligacao.de}>${ligacao.para}`) ? 'seta alerta' : 'seta' });
       Object.assign(grupo.dataset, { acao: 'remover-ligacao', de: ligacao.de, para: ligacao.para });
       const titulo = svgEl('title');
       titulo.textContent = `${nomes.get(ligacao.de)} → ${nomes.get(ligacao.para)} (clique para remover)`;
@@ -224,10 +252,10 @@
     if (svg) svg.replaceChildren();
   }
 
-  App.render = { renderizar, desenharSetas, aplicarDestaque, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
+  App.render = { renderizar, desenharSetas, aplicarDestaque, descreverReprovacao, pontoNoConteudo, desenharLinhaTemporaria, limparLinhaTemporaria };
 
   /** Uma coluna = um período. Períodos além do previsto são marcados como "Extra". */
-  function renderizarColuna(dados, periodo, indice) {
+  function renderizarColuna(dados, periodo, indice, alertas) {
     const extra = indice >= dados.periodosBase;
     const materias = dados.materias.filter((m) => m.periodoId === periodo.id);
     const rotulo = Modelo.rotuloPeriodo(indice);
@@ -257,7 +285,7 @@
 
     const corpo = el('div', { class: 'coluna-corpo', dataset: { periodoId: periodo.id } },
       materias.length
-        ? materias.map((m) => renderizarCard(m))
+        ? materias.map((m) => renderizarCard(m, alertas.get(m.id)))
         : el('p', { class: 'coluna-dica' }, 'Nenhuma matéria neste período.'));
 
     return el('section', {
@@ -267,9 +295,37 @@
     }, [cabecalho, corpo]);
   }
 
-  /** Card de uma matéria: código, nome e carga horária. */
-  function renderizarCard(materia) {
+  /** Classe CSS do status (ex.: "Aprovada" → "status-aprovada"). */
+  const classeStatus = (status) => 'status-' + status.toLowerCase();
+
+  /** Texto de uma reprovação do histórico (ex.: "Reprovada no 3º período em 12/11/2026"). */
+  function descreverReprovacao(registro) {
+    const data = registro.data.split('-').reverse().join('/');
+    return `Reprovada no ${registro.periodo}º período em ${data}`;
+  }
+
+  /**
+   * Card de uma matéria: código, nome, carga horária, status e tentativa.
+   * @param {string[]} [alertas] pré-requisitos que estão no mesmo período ou depois
+   */
+  function renderizarCard(materia, alertas) {
     const detalhes = [];
+    if (alertas) {
+      const lista = alertas.map((nome) => `"${nome}"`).join(', ');
+      detalhes.push(el('span', {
+        class: 'card-alerta',
+        role: 'img',
+        'aria-label': 'Atenção',
+        title: `Atenção: esta matéria está no mesmo período ou antes de ${alertas.length > 1 ? 'seus pré-requisitos' : 'seu pré-requisito'} ${lista}.`,
+      }, icone('alerta')));
+    }
+    detalhes.push(el('span', { class: `selo-status ${classeStatus(materia.status)}` }, materia.status));
+    if (materia.tentativas > 1) {
+      detalhes.push(el('span', {
+        class: 'selo-tentativa',
+        title: materia.historico.map(descreverReprovacao).join('\n'),
+      }, `${materia.tentativas}ª tentativa`));
+    }
     if (materia.cargaHoraria !== null) detalhes.push(el('span', { class: 'card-ch' }, `${materia.cargaHoraria} h`));
 
     const acoes = el('div', { class: 'card-acoes' }, [
@@ -284,7 +340,7 @@
     ]);
 
     return el('article', {
-      class: 'card',
+      class: `card ${classeStatus(materia.status)}` + (alertas ? ' alerta' : ''),
       tabindex: '0',
       'aria-label': materia.nome,
       title: 'Arraste para outro período ou clique duas vezes para editar',
@@ -294,7 +350,7 @@
       acoes,
       materia.codigo ? el('div', { class: 'card-codigo' }, materia.codigo) : null,
       el('div', { class: 'card-nome' }, materia.nome),
-      detalhes.length ? el('div', { class: 'card-rodape' }, detalhes) : null,
+      el('div', { class: 'card-rodape' }, detalhes),
       // Ponto de conexão: arrastar daqui até outro card cria a ligação.
       el('span', {
         class: 'conector',

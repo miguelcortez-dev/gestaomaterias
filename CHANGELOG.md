@@ -7,6 +7,25 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.5.0] - 2026-11-12
+
+### Adicionado
+
+- Status das matérias ("Pendente", "Cursando", "Aprovada" e "Reprovada"), com
+  cores distintas na borda do card e no selo de status.
+- Ao marcar uma matéria como "Reprovada", o app oferece recolocá-la em um
+  período posterior (ou em um novo período extra), registrando a reprovação no
+  histórico e mostrando a tentativa atual no card (ex.: "2ª tentativa").
+- Histórico de tentativas no formulário de edição da matéria.
+- Aviso (sem bloquear) quando uma matéria está no mesmo período ou antes de um
+  de seus pré-requisitos: o card fica em destaque laranja, a seta fica
+  tracejada e uma mensagem explica o problema.
+
+### Alterado
+
+- Setas entre matérias do mesmo período ou que "voltam" para um período
+  anterior agora fazem um percurso próprio, sem atravessar os cards.
+
 ## [0.4.0] - 2026-11-12
 
 ### Adicionado
