@@ -147,6 +147,74 @@
     select.value = selecionado;
   }
 
+  /** Nome de exibição de uma matéria pelo id. */
+  function nomeMateria(id) {
+    const materia = App.estado.obter().materias.find((m) => m.id === id);
+    return materia ? materia.nome : '?';
+  }
+
+  /** Texto de um ciclo, ex.: "Cálculo I → Cálculo II → Cálculo I". */
+  const descreverCiclo = (ids) => ids.map(nomeMateria).join(' → ');
+
+  /** Texto sem acentos e em minúsculas, para buscas. */
+  const paraBusca = (texto) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  /**
+   * Monta a lista de pré-requisitos (caixas de seleção agrupadas por período).
+   * Matérias que já dependem da matéria em edição ficam bloqueadas, pois
+   * escolhê-las criaria uma dependência circular.
+   */
+  function preencherPreRequisitos(dados, materia) {
+    const selecionados = new Set(materia ? materia.preRequisitos : []);
+    const bloqueadas = materia ? Modelo.liberadasPor(dados.materias, materia.id) : new Set();
+
+    const grupos = dados.periodos.map((periodo, indice) => {
+      const itens = dados.materias.filter((m) => m.periodoId === periodo.id && (!materia || m.id !== materia.id));
+      if (!itens.length) return null;
+      return el('div', { class: 'opcoes-grupo' }, [
+        el('div', { class: 'opcoes-grupo-titulo' }, Modelo.rotuloPeriodo(indice)),
+        ...itens.map((m) => {
+          const bloqueada = bloqueadas.has(m.id) && !selecionados.has(m.id);
+          return el('label', {
+            class: 'opcao' + (bloqueada ? ' bloqueada' : ''),
+            title: bloqueada ? 'Esta matéria depende da que está sendo editada; usá-la como pré-requisito criaria um ciclo.' : null,
+            dataset: { busca: paraBusca(`${m.nome} ${m.codigo}`) },
+          }, [
+            el('input', { type: 'checkbox', value: m.id, checked: selecionados.has(m.id), disabled: bloqueada }),
+            m.codigo ? el('span', { class: 'opcao-codigo' }, m.codigo) : null,
+            el('span', { class: 'opcao-nome' }, m.nome),
+            bloqueada ? el('span', { class: 'opcao-nota' }, 'criaria ciclo') : null,
+          ]);
+        }),
+      ]);
+    }).filter(Boolean);
+
+    $('prereq-lista').replaceChildren(...(grupos.length
+      ? grupos
+      : [el('p', { class: 'ajuda lista-vazia' }, 'Cadastre outras matérias para poder ligá-las como pré-requisitos.')]));
+    $('prereq-busca').value = '';
+    $('prereq-busca').hidden = !grupos.length;
+    atualizarResumoPreRequisitos();
+  }
+
+  function atualizarResumoPreRequisitos() {
+    const total = $('prereq-lista').querySelectorAll('input:checked').length;
+    $('prereq-resumo').textContent = total ? `(${total} selecionado${total > 1 ? 's' : ''})` : '';
+  }
+
+  function filtrarPreRequisitos() {
+    const termo = paraBusca($('prereq-busca').value.trim());
+    $('prereq-lista').querySelectorAll('.opcoes-grupo').forEach((grupo) => {
+      let visiveis = 0;
+      grupo.querySelectorAll('.opcao').forEach((opcao) => {
+        const mostra = !termo || opcao.dataset.busca.includes(termo);
+        opcao.hidden = !mostra;
+        if (mostra) visiveis++;
+      });
+      grupo.hidden = visiveis === 0;
+    });
+  }
+
   /**
    * Abre o formulário.
    * @param {string|null} id         matéria a editar, ou null para criar
@@ -164,6 +232,7 @@
     $('materia-codigo').value = materia ? materia.codigo : '';
     $('materia-ch').value = materia && materia.cargaHoraria !== null ? materia.cargaHoraria : '';
     preencherPeriodos($('materia-periodo'), dados, materia ? materia.periodoId : periodoId || dados.periodos[0].id);
+    preencherPreRequisitos(dados, materia);
     $('materia-erro').hidden = true;
     $('materia-excluir').hidden = !materia;
 
@@ -195,12 +264,26 @@
       cargaHoraria = numero;
     }
 
+    const preRequisitos = [...$('prereq-lista').querySelectorAll('input:checked')].map((caixa) => caixa.value);
+    if (materiaEmEdicao) {
+      const materias = App.estado.obter().materias;
+      for (const requisito of preRequisitos) {
+        const ciclo = Modelo.cicloAoLigar(materias, requisito, materiaEmEdicao);
+        if (ciclo) {
+          return {
+            erro: `"${nomeMateria(requisito)}" não pode ser pré-requisito desta matéria: isso criaria uma dependência circular (${descreverCiclo(ciclo)}).`,
+          };
+        }
+      }
+    }
+
     return {
       valores: {
         nome,
         codigo: $('materia-codigo').value.trim(),
         cargaHoraria,
         periodoId: $('materia-periodo').value,
+        preRequisitos,
       },
     };
   }
@@ -233,17 +316,26 @@
    * @returns {Promise<boolean>} true se foi excluída.
    */
   async function excluirMateria(id) {
-    const materia = App.estado.obter().materias.find((m) => m.id === id);
+    const materias = App.estado.obter().materias;
+    const materia = materias.find((m) => m.id === id);
     if (!materia) return false;
+
+    const ligacoes = materia.preRequisitos.length + materias.filter((m) => m.preRequisitos.includes(id)).length;
     const confirmado = await App.ui.confirmar({
       titulo: 'Excluir matéria?',
-      mensagem: `A matéria "${materia.nome}" será excluída do fluxograma.`,
+      mensagem: `A matéria "${materia.nome}" será excluída do fluxograma` +
+        (ligacoes ? `, junto com ${ligacoes === 1 ? 'a ligação associada' : `as ${ligacoes} ligações associadas`}.` : '.'),
       confirmar: 'Excluir',
       perigo: true,
     });
     if (!confirmado) return false;
+
+    // Remove a matéria e as ligações em que ela aparece como pré-requisito.
     return App.estado.alterar('Excluir matéria', (rascunho) => {
       rascunho.materias = rascunho.materias.filter((m) => m.id !== id);
+      rascunho.materias.forEach((m) => {
+        m.preRequisitos = m.preRequisitos.filter((p) => p !== id);
+      });
     });
   }
 
@@ -251,6 +343,8 @@
     $('btn-nova-materia').addEventListener('click', () => abrirFormularioMateria());
     $('form-materia').addEventListener('submit', salvarMateria);
     $('materia-cancelar').addEventListener('click', () => $('dlg-materia').close());
+    $('prereq-busca').addEventListener('input', filtrarPreRequisitos);
+    $('prereq-lista').addEventListener('change', atualizarResumoPreRequisitos);
     $('materia-excluir').addEventListener('click', async () => {
       if (await excluirMateria(materiaEmEdicao)) $('dlg-materia').close();
     });

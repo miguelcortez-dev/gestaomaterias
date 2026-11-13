@@ -514,3 +514,68 @@ input:focus, select:focus {
   border-radius: 2px;
   background: var(--cor-primaria);
 }
+
+/* ---------- Pré-requisitos (lista de seleção múltipla) ---------- */
+dialog.dialogo { overflow: auto; }
+
+.campo-prereq {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.campo-prereq legend { padding: 0; margin-bottom: 5px; }
+
+.campo-nota {
+  color: var(--cor-texto-suave);
+  font-weight: 500;
+}
+
+.lista-opcoes {
+  max-height: 210px;
+  margin-top: 6px;
+  overflow-y: auto;
+  border: 1px solid #cbd2de;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.lista-vazia { padding: 12px; }
+
+.opcoes-grupo-titulo {
+  position: sticky;
+  top: 0;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--cor-borda);
+  background: #f0f3f8;
+  color: var(--cor-texto-suave);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.opcao:hover { background: var(--cor-primaria-clara); }
+.opcao input { width: 16px; height: 16px; margin: 0; accent-color: var(--cor-primaria); }
+.opcao-codigo { color: var(--cor-texto-suave); font-size: 12px; font-weight: 700; }
+.opcao-nome { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.opcao.bloqueada { cursor: not-allowed; opacity: 0.55; }
+.opcao.bloqueada:hover { background: transparent; }
+
+.opcao-nota {
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #fdecec;
+  color: var(--cor-perigo);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
