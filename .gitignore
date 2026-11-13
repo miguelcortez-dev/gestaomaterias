@@ -1,0 +1,31 @@
+# Dependências
+node_modules/
+
+# Saída do electron-builder
+dist/
+
+# Dados locais do aplicativo (ficam na pasta de dados do usuário, nunca no repositório)
+curso.json
+*.bak
+*.tmp
+*.corrompido-*
+janela.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+*.log
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Arquivos de editores e IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
