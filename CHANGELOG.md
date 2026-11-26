@@ -7,6 +7,13 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- Tema escuro, além do claro. Em Exibir › Tema é possível escolher "Seguir o
+  sistema" (padrão), "Claro" ou "Escuro"; o botão com o ícone de sol/lua no
+  cabeçalho alterna rapidamente entre claro e escuro. A escolha é lembrada
+  entre as sessões e também vale para os diálogos nativos do Windows.
+
 ## [0.6.1] - 2026-11-13
 
 ### Adicionado
