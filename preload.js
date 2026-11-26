@@ -21,6 +21,17 @@ contextBridge.exposeInMainWorld('api', {
   /** Lê dados de um arquivo escolhido pelo usuário. Resolve com { ok, dados?, cancelado?, erro? }. */
   importar: () => ipcRenderer.invoke('dados:importar'),
 
+  /** Tema escolhido e se as cores escuras estão em uso. Resolve com { tema, escuro }. */
+  obterTema: () => ipcRenderer.invoke('tema:obter'),
+
+  /** Define o tema ("sistema", "claro" ou "escuro"). Resolve com { ok, tema?, escuro?, erro? }. */
+  definirTema: (tema) => ipcRenderer.invoke('tema:definir', tema),
+
+  /** Registra quem trata as mudanças de tema (menu, botão ou configuração do sistema). */
+  aoAlterarTema: (tratar) => {
+    ipcRenderer.on('tema:alterado', (_evento, estado) => tratar(estado));
+  },
+
   /** Registra quem trata os comandos vindos do menu da janela. */
   aoComandoDoMenu: (tratar) => {
     ipcRenderer.on('menu:comando', (_evento, comando) => {
