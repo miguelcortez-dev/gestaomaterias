@@ -7,6 +7,8 @@ e o projeto adota o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+## [0.7.0] - 2026-11-26
+
 ### Adicionado
 
 - Tema escuro, além do claro. Em Exibir › Tema é possível escolher "Seguir o
