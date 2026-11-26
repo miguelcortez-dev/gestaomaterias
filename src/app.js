@@ -753,6 +753,34 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Tema claro/escuro
+   * ------------------------------------------------------------------ */
+
+  /**
+   * O botão do cabeçalho alterna entre claro e escuro; "seguir o sistema" fica
+   * no menu Exibir › Tema. As cores vêm do CSS (prefers-color-scheme), definido
+   * pelo processo principal; aqui só se atualiza o ícone e o texto do botão.
+   */
+  async function ligarTema() {
+    const botao = $('btn-tema');
+    let escuro = false;
+    const atualizarBotao = (estado) => {
+      escuro = Boolean(estado && estado.escuro);
+      const texto = escuro ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+      botao.replaceChildren(App.ui.icone(escuro ? 'sol' : 'lua'));
+      botao.title = texto;
+      botao.setAttribute('aria-label', texto);
+    };
+    App.ipc.aoAlterarTema(atualizarBotao);
+    botao.addEventListener('click', async () => {
+      const resposta = await App.ipc.definirTema(escuro ? 'claro' : 'escuro');
+      if (!resposta.ok) toast(`Não foi possível trocar o tema: ${resposta.erro}`, 'erro');
+      else atualizarBotao(resposta);
+    });
+    atualizarBotao(await App.ipc.obterTema());
+  }
+
+  /* ------------------------------------------------------------------ *
    * Avisos de validação (não bloqueiam a ação)
    * ------------------------------------------------------------------ */
 
@@ -852,6 +880,7 @@
 
   async function iniciar() {
     App.ui.aplicarIcones();
+    ligarTema();
     let resposta;
     try {
       resposta = await App.ipc.carregar();

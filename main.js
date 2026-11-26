@@ -5,10 +5,11 @@
  * Responsabilidades:
  *  - criar a janela principal (instância única, lembrando tamanho e posição);
  *  - montar o menu em português;
+ *  - aplicar e lembrar o tema escolhido (sistema, claro ou escuro);
  *  - aplicar as regras de segurança (sem navegação externa, sem permissões);
  *  - ler e gravar os dados do curso em disco, atendendo à interface via IPC.
  */
-const { app, BrowserWindow, Menu, dialog, ipcMain, screen, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, screen, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const fsp = fs.promises;
@@ -16,6 +17,7 @@ const Modelo = require('./src/modelo.js');
 
 const ARQUIVO_DADOS = 'curso.json';
 const ARQUIVO_JANELA = 'janela.json';
+const ARQUIVO_PREFERENCIAS = 'preferencias.json';
 const TAMANHO_PADRAO = { width: 1280, height: 800 };
 const TAMANHO_MINIMO = { width: 960, height: 600 };
 
@@ -174,6 +176,18 @@ function registrarIpc() {
     validarRemetente(evento);
     return importarDados();
   });
+
+  ipcMain.handle('tema:obter', (evento) => {
+    validarRemetente(evento);
+    return estadoDoTema();
+  });
+
+  ipcMain.handle('tema:definir', (evento, tema) => {
+    validarRemetente(evento);
+    if (typeof tema !== 'string' || !Object.hasOwn(TEMAS, tema)) return { ok: false, erro: 'Tema desconhecido.' };
+    definirTema(tema);
+    return { ok: true, ...estadoDoTema() };
+  });
 }
 
 /** Envia um comando do menu para a interface (ex.: "exportar"). */
@@ -229,6 +243,74 @@ async function importarDados() {
     const mensagem = erro instanceof SyntaxError ? 'O arquivo não contém um JSON válido.' : erro.message;
     return { ok: false, erro: mensagem };
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * Tema (sistema, claro ou escuro)
+ * ------------------------------------------------------------------ */
+
+/** Temas aceitos e o valor correspondente de nativeTheme.themeSource. */
+const TEMAS = { sistema: 'system', claro: 'light', escuro: 'dark' };
+const TEMA_PADRAO = 'sistema';
+const COR_FUNDO = { claro: '#f3f5f9', escuro: '#12161d' }; // igual a --cor-fundo do style.css
+
+let temaAtual = TEMA_PADRAO;
+
+function caminhoPreferencias() {
+  return path.join(app.getPath('userData'), ARQUIVO_PREFERENCIAS);
+}
+
+/** Lê o tema salvo; qualquer problema no arquivo volta ao padrão (seguir o sistema). */
+function lerTemaSalvo() {
+  try {
+    const { tema } = JSON.parse(fs.readFileSync(caminhoPreferencias(), 'utf8'));
+    return Object.hasOwn(TEMAS, tema) ? tema : TEMA_PADRAO;
+  } catch {
+    return TEMA_PADRAO;
+  }
+}
+
+function salvarTema(tema) {
+  try {
+    fs.mkdirSync(path.dirname(caminhoPreferencias()), { recursive: true });
+    fs.writeFileSync(caminhoPreferencias(), JSON.stringify({ tema }));
+  } catch (erro) {
+    console.error('Não foi possível salvar o tema:', erro);
+  }
+}
+
+/** Tema escolhido e se, na prática, as cores escuras estão em uso. */
+function estadoDoTema() {
+  return { tema: temaAtual, escuro: nativeTheme.shouldUseDarkColors };
+}
+
+/**
+ * Aplica o tema. O nativeTheme define o prefers-color-scheme da interface e
+ * também a aparência dos diálogos nativos e da barra de título.
+ */
+function aplicarTema(tema) {
+  temaAtual = Object.hasOwn(TEMAS, tema) ? tema : TEMA_PADRAO;
+  nativeTheme.themeSource = TEMAS[temaAtual];
+}
+
+/** Troca o tema a pedido do usuário (menu ou botão), grava e atualiza o menu. */
+function definirTema(tema) {
+  if (!Object.hasOwn(TEMAS, tema)) return;
+  const mudou = tema !== temaAtual;
+  aplicarTema(tema);
+  if (!mudou) return;
+  salvarTema(temaAtual);
+  montarMenu(); // mantém marcada a opção certa em Exibir › Tema
+}
+
+/** Avisa a interface sempre que as cores efetivas mudam (inclusive pelo sistema). */
+function acompanharTema() {
+  nativeTheme.on('updated', () => {
+    if (!janelaPrincipal) return;
+    const { escuro } = estadoDoTema();
+    janelaPrincipal.setBackgroundColor(escuro ? COR_FUNDO.escuro : COR_FUNDO.claro);
+    janelaPrincipal.webContents.send('tema:alterado', estadoDoTema());
+  });
 }
 
 /* ------------------------------------------------------------------ *
@@ -291,7 +373,7 @@ function criarJanela() {
     minWidth: TAMANHO_MINIMO.width,
     minHeight: TAMANHO_MINIMO.height,
     show: false, // exibe só quando o conteúdo estiver pronto (evita tela branca)
-    backgroundColor: '#f3f5f9',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? COR_FUNDO.escuro : COR_FUNDO.claro,
     title: 'Gestão de Matérias',
     webPreferences: {
       // O front-end não tem acesso ao Node.js; tudo passa pelo preload (contextBridge).
@@ -381,6 +463,20 @@ function montarMenu() {
         { role: 'resetZoom', label: 'Tamanho original' },
       ],
     },
+    {
+      label: 'Tema',
+      submenu: [
+        { label: 'Seguir o sistema', value: 'sistema' },
+        { label: 'Claro', value: 'claro' },
+        { label: 'Escuro', value: 'escuro' },
+      ].map(({ label, value }) => ({
+        label,
+        type: 'radio',
+        checked: temaAtual === value,
+        click: () => definirTema(value),
+      })),
+    },
+    { type: 'separator' },
     { role: 'togglefullscreen', label: 'Tela cheia' },
   ];
   if (!app.isPackaged) {
@@ -426,6 +522,8 @@ app.on('web-contents-created', (_evento, conteudo) => {
  * ------------------------------------------------------------------ */
 
 function iniciar() {
+  aplicarTema(lerTemaSalvo()); // antes de criar a janela, para não piscar o tema errado
+  acompanharTema();
   aplicarSeguranca();
   registrarIpc();
   montarMenu();

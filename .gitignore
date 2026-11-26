@@ -10,6 +10,7 @@ curso.json
 *.tmp
 *.corrompido-*
 janela.json
+preferencias.json
 
 # Logs
 npm-debug.log*

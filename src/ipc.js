@@ -40,10 +40,33 @@
     }
   }
 
+  /** Lê o tema atual. Em caso de falha, assume o claro. */
+  async function obterTema() {
+    try {
+      return await api.obterTema();
+    } catch {
+      return { tema: 'sistema', escuro: false };
+    }
+  }
+
+  /** Define o tema. Sempre resolve com { ok, tema?, escuro?, erro? }. */
+  async function definirTema(tema) {
+    try {
+      return await api.definirTema(tema);
+    } catch (erro) {
+      return { ok: false, erro: erro.message };
+    }
+  }
+
+  /** Registra o tratamento das mudanças de tema. */
+  function aoAlterarTema(tratar) {
+    api.aoAlterarTema(tratar);
+  }
+
   /** Registra o tratamento dos comandos do menu (Arquivo › Exportar/Importar...). */
   function aoComandoDoMenu(tratar) {
     api.aoComandoDoMenu(tratar);
   }
 
-  App.ipc = { carregar, salvar, exportar, importar, aoComandoDoMenu };
+  App.ipc = { carregar, salvar, exportar, importar, obterTema, definirTema, aoAlterarTema, aoComandoDoMenu };
 })();
